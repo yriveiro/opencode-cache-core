@@ -1,0 +1,42 @@
+import type { Hooks } from "@opencode-ai/plugin";
+
+import type { PermissionRequest } from "./types";
+
+function matchesPermission(
+	cacheDir: string,
+	request: PermissionRequest,
+): boolean {
+	if (request.type !== "external_directory") {
+		return false;
+	}
+
+	const patterns = Array.isArray(request.pattern)
+		? request.pattern
+		: request.pattern
+			? [request.pattern]
+			: [];
+
+	return (
+		request.title.includes(cacheDir) ||
+		patterns.some((pattern) => pattern.includes(cacheDir))
+	);
+}
+
+export function createPermissionHandler(
+	cacheDir: string,
+): NonNullable<Hooks["permission.ask"]> {
+	return async (
+		input: Parameters<NonNullable<Hooks["permission.ask"]>>[0],
+		output: Parameters<NonNullable<Hooks["permission.ask"]>>[1],
+	): Promise<void> => {
+		if (
+			matchesPermission(cacheDir, {
+				type: input.type,
+				title: input.title,
+				pattern: input.pattern,
+			})
+		) {
+			output.status = "allow";
+		}
+	};
+}

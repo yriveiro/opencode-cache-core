@@ -1,0 +1,5 @@
+Purpose: small TypeScript core for an OpenCode plugin that works with cache/index files. It provides utilities to build cache-backed tools, auto-allow permissions for a cache directory, send notifications into sessions, create/search indexes, and manage cache lifecycle persistence. Current codebase is minimal and does not include a package manifest or concrete plugin entrypoint/manifest.
+
+Structure: cache-core.ts defines shared types and search helpers; cache-build.ts builds an index by globbing files with Bun.Glob; cache-runtime.ts searches indexed files line-by-line; cache-lifecycle.ts reads/writes timestamps and persisted index files; cache-plugin.ts wraps these pieces into OpenCode plugin-facing helpers for permissions, notifications, status tools, and search tools.
+
+Tech stack: TypeScript running on Bun APIs (bun:path, Bun.Glob) plus fs/promises, with @opencode-ai/plugin used for tool definitions.

@@ -1,0 +1,2444 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <title>opencode-cache-core plugin docs</title>
+    <meta name="description" content="Documentation for the opencode-cache-core OpenCode plugin: overview, architecture, configuration, tool behavior, and code walkthrough.">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
+    <style>
+/* ============================================
+   CSS Custom Properties (Design Tokens)
+   ============================================ */
+:root {
+  /* Color palette - Dark theme (default) */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-code: #1c2128;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-heading: #f0f6fc;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --border: #30363d;
+
+  /* Syntax highlighting */
+  --code-keyword: #ff7b72;
+  --code-string: #a5d6ff;
+  --code-type: #7ee787;
+  --code-comment: #8b949e;
+  --code-function: #d2a8ff;
+  --code-number: #79c0ff;
+
+  /* Spacing scale using fluid values */
+  --space-xs: clamp(0.25rem, 0.5vw, 0.5rem);
+  --space-sm: clamp(0.5rem, 1vw, 0.75rem);
+  --space-md: clamp(1rem, 2vw, 1.5rem);
+  --space-lg: clamp(1.5rem, 3vw, 2rem);
+  --space-xl: clamp(2rem, 4vw, 3rem);
+
+  /* Typography scale using fluid values */
+  --font-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --font-sm: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem);
+  --font-base: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  --font-md: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  --font-lg: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  --font-xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+
+  /* Font families */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Consolas', 'Monaco', monospace;
+
+  /* Animation */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Layout */
+  --header-height: clamp(56px, 8vh, 72px);
+  --nav-height: clamp(44px, 6vh, 56px);
+  --content-max-width: 1600px;
+  --touch-target-min: 44px;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-code: #f0f2f4;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-heading: #1f2328;
+  --accent: #0969da;
+  --accent-hover: #0550ae;
+  --border: #d0d7de;
+  --code-keyword: #cf222e;
+  --code-string: #0a3069;
+  --code-type: #116329;
+  --code-comment: #6e7781;
+  --code-function: #8250df;
+  --code-number: #0550ae;
+}
+
+/* ============================================
+   Base Reset & Global Styles
+   ============================================ */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100dvh;
+}
+
+/* ============================================
+   Skip Link (Accessibility)
+   ============================================ */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--accent);
+  color: var(--bg-primary);
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 8px 8px;
+  z-index: 10000;
+  transition: top var(--transition-fast);
+}
+
+.skip-link:focus { top: 0; outline: 3px solid var(--accent-hover); outline-offset: 2px; }
+
+/* ============================================
+   Header
+   ============================================ */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: var(--header-height);
+  padding-inline: var(--space-md);
+  background: var(--bg-secondary);
+  border-block-end: 1px solid var(--border);
+}
+
+header h1 {
+  color: var(--text-heading);
+  font-size: var(--font-lg);
+  font-weight: 600;
+}
+
+header h1 span { color: var(--accent); }
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ============================================
+   Theme Toggle & GitHub Link
+   ============================================ */
+.theme-toggle,
+.github-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color var(--transition-fast),
+              border-color var(--transition-fast),
+              background var(--transition-fast);
+}
+
+.theme-toggle:hover,
+.github-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.theme-toggle:focus-visible,
+.github-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-toggle svg,
+.github-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+.theme-toggle .sun-icon { display: none; }
+.theme-toggle .moon-icon { display: block; }
+[data-theme="light"] .theme-toggle .sun-icon { display: block; }
+[data-theme="light"] .theme-toggle .moon-icon { display: none; }
+
+/* ============================================
+   CSS-Only Mobile Menu
+   ============================================ */
+.mobile-menu-checkbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.mobile-menu-btn:hover { color: var(--accent); border-color: var(--accent); }
+.mobile-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mobile-menu-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.mobile-menu-btn .close-icon { display: none; }
+.mobile-menu-btn .menu-icon { display: block; }
+
+/* ============================================
+   Navigation
+   ============================================ */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-secondary);
+  border-block-end: 1px solid var(--border);
+}
+
+nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target-min);
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+nav a:hover { color: var(--accent); background: rgba(88, 166, 255, 0.1); }
+nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav a.active { color: var(--accent); background: rgba(88, 166, 255, 0.15); }
+
+/* ============================================
+   Main Content
+   ============================================ */
+main {
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+  padding: var(--space-lg);
+}
+
+/* ============================================
+   Sections
+   ============================================ */
+section {
+  margin-block-end: var(--space-xl);
+  scroll-margin-block-start: calc(var(--header-height) + var(--nav-height) + var(--space-md));
+}
+
+section h3 {
+  color: var(--text-heading);
+  font-size: var(--font-md);
+  margin-block: var(--space-md) var(--space-sm);
+}
+
+/* ============================================
+   Collapsible Section Header
+   ============================================ */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-block-end: var(--space-md);
+  padding-block-end: var(--space-sm);
+  border-block-end: 1px solid var(--border);
+  color: var(--text-heading);
+  font-size: var(--font-lg);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.section-header:hover { color: var(--accent); }
+.section-header span { flex: 1; }
+
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-xs);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.collapse-btn:hover { color: var(--accent); background: rgba(88, 166, 255, 0.1); }
+.collapse-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.collapse-btn svg { width: 20px; height: 20px; transition: transform var(--transition-slow); }
+
+.section-content {
+  overflow: hidden;
+  transition: max-height 0.4s ease, opacity var(--transition-slow);
+  max-height: 20000px;
+  opacity: 1;
+}
+
+section.collapsed .section-content { max-height: 0; opacity: 0; }
+section.collapsed .collapse-btn svg { transform: rotate(-90deg); }
+section.collapsed .section-header { margin-block-end: 0; border-block-end-color: transparent; }
+
+/* ============================================
+   Two-Column Documentation Layout
+   ============================================ */
+.doc-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-block-end: var(--space-lg);
+  align-items: start;
+}
+
+/* ============================================
+   Documentation Content Column
+   ============================================ */
+.doc-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: var(--space-md);
+}
+
+.doc-content h4 {
+  color: var(--accent);
+  font-size: var(--font-base);
+  font-family: var(--font-mono);
+  margin-block-end: var(--space-sm);
+}
+
+.doc-content p { color: var(--text-primary); margin-block-end: var(--space-sm); }
+.doc-content ul { margin-inline-start: var(--space-md); margin-block-end: var(--space-sm); }
+.doc-content li { color: var(--text-secondary); margin-block-end: var(--space-xs); }
+
+.doc-content .param {
+  background: var(--bg-code);
+  padding: var(--space-sm);
+  border-radius: 6px;
+  margin-block-end: var(--space-xs);
+}
+
+.doc-content .param-name { color: var(--code-function); font-family: var(--font-mono); font-size: var(--font-sm); }
+.doc-content .param-type { color: var(--code-type); font-family: var(--font-mono); font-size: var(--font-sm); margin-inline-start: var(--space-xs); }
+.doc-content .param-desc { color: var(--text-secondary); font-size: var(--font-sm); margin-block-start: var(--space-xs); }
+
+/* ============================================
+   Tags
+   ============================================ */
+.tag {
+  display: inline-block;
+  padding: 0.125rem var(--space-sm);
+  border-radius: 4px;
+  font-size: var(--font-xs);
+  font-weight: 500;
+  margin-inline-end: var(--space-xs);
+  margin-block-end: var(--space-xs);
+  text-decoration: none;
+  transition: filter var(--transition-fast);
+}
+
+a.tag:hover { filter: brightness(1.2); text-decoration: underline; }
+a.tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tag-protocol { background: rgba(126, 231, 135, 0.15); color: var(--code-type); }
+.tag-struct   { background: rgba(210, 168, 255, 0.15); color: var(--code-function); }
+.tag-enum     { background: rgba(255, 123, 114, 0.15); color: var(--code-keyword); }
+.tag-throws   { background: rgba(255, 166, 87, 0.15);  color: #ffa657; }
+.tag-sendable { background: rgba(126, 231, 135, 0.15); color: var(--code-type); }
+
+/* ============================================
+   Code Content Column
+   ============================================ */
+.code-content {
+  position: relative;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: code-block;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--bg-secondary);
+  border-block-end: 1px solid var(--border);
+}
+
+.code-header .filename { color: var(--text-secondary); font-family: var(--font-mono); font-size: var(--font-xs); }
+.code-header .lines    { color: var(--text-secondary); font-size: var(--font-xs); }
+
+pre {
+  padding: var(--space-sm);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  -webkit-overflow-scrolling: touch;
+}
+
+code { font-family: inherit; }
+
+@container code-block (max-width: 400px) {
+  pre { font-size: 0.7rem; padding: var(--space-xs); }
+  .code-header { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+}
+
+/* ============================================
+   Syntax Highlighting
+   ============================================ */
+
+/* highlight.js integration — keep our container background, strip hljs chrome */
+.hljs {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.keyword  { color: var(--code-keyword); }
+.type     { color: var(--code-type); }
+.string   { color: var(--code-string); }
+.comment  { color: var(--code-comment); font-style: italic; }
+.function { color: var(--code-function); }
+.number   { color: var(--code-number); }
+.property { color: var(--code-number); }
+
+.shell-command { color: var(--code-function); }
+.shell-flag    { color: var(--code-keyword); }
+.shell-arg     { color: var(--code-string); }
+.shell-pipe    { color: var(--code-keyword); font-weight: bold; }
+.shell-url     { color: var(--code-number); text-decoration: underline; }
+
+/* ============================================
+   Inline Code
+   ============================================ */
+.inline-code,
+code:not(pre code) {
+  background: var(--bg-code);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  color: var(--code-function);
+}
+
+/* ============================================
+   Intro / Overview Section
+   ============================================ */
+.intro {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-code) 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--space-lg);
+  margin-block-end: var(--space-lg);
+}
+
+.intro h2 { border: none; padding: 0; margin-block-end: var(--space-sm); color: var(--text-heading); font-size: var(--font-xl); }
+.intro p   { color: var(--text-secondary); font-size: var(--font-md); }
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--space-sm);
+  margin-block-start: var(--space-md);
+}
+
+.feature {
+  background: var(--bg-primary);
+  padding: var(--space-sm);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.feature h4 { color: var(--accent); font-size: var(--font-sm); margin-block-end: var(--space-xs); }
+.feature p  { color: var(--text-secondary); font-size: var(--font-sm); }
+
+/* ============================================
+   Card Grid
+   ============================================ */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-md);
+  margin-block-end: var(--space-lg);
+}
+
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: var(--space-md);
+}
+
+.card h3 { color: var(--accent); font-size: var(--font-base); font-family: var(--font-mono); margin-block-end: var(--space-sm); }
+.card p  { color: var(--text-secondary); font-size: var(--font-sm); line-height: 1.7; }
+
+/* ============================================
+   Table
+   ============================================ */
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-block-end: var(--space-lg);
+}
+
+.doc-table th {
+  background: var(--bg-secondary);
+  color: var(--text-heading);
+  font-size: var(--font-sm);
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  border-block-end: 1px solid var(--border);
+}
+
+.doc-table td {
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-block-end: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.doc-table tr:last-child td { border-block-end: none; }
+.doc-table tr:hover td { background: var(--bg-secondary); }
+
+/* ============================================
+   Callout
+   ============================================ */
+.callout {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: var(--space-md);
+  margin-block-end: var(--space-md);
+}
+
+.callout h3 { color: var(--accent); font-size: var(--font-base); margin-block-end: var(--space-sm); }
+.callout p  { color: var(--text-secondary); font-size: var(--font-sm); }
+
+/* ============================================
+   Architecture Diagram
+   ============================================ */
+.architecture {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  margin-block-end: var(--space-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.architecture pre.mermaid {
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-sm) 0;
+}
+
+.architecture .mermaid svg { max-width: 100%; height: auto; }
+
+/* ============================================
+   Copy Button
+   ============================================ */
+.copy-btn {
+  position: absolute;
+  top: calc(var(--space-lg) + var(--space-md) + var(--space-xs));
+  inset-inline-end: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: 0.375rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity var(--transition-fast),
+              background var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+
+.code-content:hover .copy-btn,
+.copy-btn:focus-visible { opacity: 1; }
+
+.copy-btn:hover { background: var(--bg-code); color: var(--accent); border-color: var(--accent); }
+.copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copy-btn.copied { color: var(--code-type); border-color: var(--code-type); }
+.copy-btn svg { width: 16px; height: 16px; }
+.copy-btn .check-icon { display: none; }
+.copy-btn.copied .copy-icon { display: none; }
+.copy-btn.copied .check-icon { display: block; }
+
+/* ============================================
+   Floating Navigation Widget
+   ============================================ */
+.float-nav {
+  position: fixed;
+  inset-inline-start: var(--space-md);
+  inset-block-end: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  z-index: 1000;
+}
+
+.float-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-fast);
+  position: relative;
+}
+
+.float-nav-btn:hover {
+  background: var(--bg-code);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+
+.float-nav-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.float-nav-btn.active { background: rgba(88, 166, 255, 0.15); color: var(--accent); border-color: var(--accent); }
+.float-nav-btn svg { width: 20px; height: 20px; }
+
+/* Tooltip */
+.float-nav-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  inset-inline-start: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  pointer-events: none;
+}
+
+.float-nav-btn::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-inline-end-color: var(--border);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  pointer-events: none;
+}
+
+.float-nav-btn:hover::after,
+.float-nav-btn:hover::before,
+.float-nav-btn:focus-visible::after,
+.float-nav-btn:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ============================================
+   Back to Top Button
+   ============================================ */
+.back-to-top {
+  position: fixed;
+  inset-inline-end: var(--space-md);
+  inset-block-end: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: background var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-fast),
+              opacity var(--transition-fast),
+              visibility var(--transition-fast);
+}
+
+.back-to-top.visible { opacity: 1; visibility: visible; }
+
+.back-to-top:hover {
+  background: var(--bg-code);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateX(-4px);
+}
+
+.back-to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.back-to-top svg { width: 20px; height: 20px; }
+
+.back-to-top::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  inset-inline-end: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  pointer-events: none;
+}
+
+.back-to-top::before {
+  content: '';
+  position: absolute;
+  inset-inline-end: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-inline-start-color: var(--border);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  pointer-events: none;
+}
+
+.back-to-top:hover::after,
+.back-to-top:hover::before,
+.back-to-top:focus-visible::after,
+.back-to-top:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+footer {
+  margin-block-start: var(--space-xl);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-block-start: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+
+footer a { color: var(--accent); text-decoration: none; transition: color var(--transition-fast); }
+footer a:hover { text-decoration: underline; }
+footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ============================================
+   Page separators between doc "pages"
+   ============================================ */
+.page-section {
+  padding-block-start: var(--space-xl);
+  border-block-start: 2px solid var(--border);
+  margin-block-start: var(--space-xl);
+  scroll-margin-block-start: calc(var(--header-height) + var(--nav-height) + var(--space-sm));
+}
+
+.page-section:first-child {
+  border-block-start: none;
+  padding-block-start: 0;
+  margin-block-start: 0;
+}
+
+/* ============================================
+   Responsive - Tablet (max-width: 1024px)
+   ============================================ */
+@media (max-width: 1024px) {
+  .doc-row { grid-template-columns: 1fr; }
+}
+
+/* ============================================
+   Responsive - Mobile (max-width: 768px)
+   ============================================ */
+@media (max-width: 768px) {
+  header { padding-inline: var(--space-sm); min-height: auto; padding-block: var(--space-sm); }
+  header h1 { font-size: var(--font-md); }
+
+  .mobile-menu-btn { display: flex; }
+
+  nav {
+    position: absolute;
+    top: 100%;
+    inset-inline: 0;
+    flex-direction: column;
+    padding: var(--space-xs) var(--space-sm) var(--space-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: none;
+  }
+
+  nav a { padding: var(--space-sm); }
+
+  #mobile-menu-toggle:checked + nav { display: flex; }
+
+  body:has(#mobile-menu-toggle:checked) .mobile-menu-btn .menu-icon  { display: none; }
+  body:has(#mobile-menu-toggle:checked) .mobile-menu-btn .close-icon { display: block; }
+
+  main { padding: var(--space-sm); }
+  .intro, .architecture { padding: var(--space-md); }
+
+  .float-nav { inset-inline-start: var(--space-sm); inset-block-end: var(--space-sm); }
+  .float-nav-btn { width: 40px; height: 40px; }
+  .float-nav-btn svg { width: 18px; height: 18px; }
+  .float-nav-btn::after, .float-nav-btn::before { display: none; }
+
+  .back-to-top { inset-inline-end: var(--space-sm); inset-block-end: var(--space-sm); width: 40px; height: 40px; }
+  .back-to-top svg { width: 18px; height: 18px; }
+  .back-to-top::after, .back-to-top::before { display: none; }
+}
+
+/* ============================================
+   Responsive - Small Mobile (max-width: 480px)
+   ============================================ */
+@media (max-width: 480px) {
+  :root { --space-md: 0.75rem; --space-lg: 1rem; }
+  .features { grid-template-columns: 1fr; }
+  .doc-content { padding: var(--space-sm); }
+  .code-header { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+  pre { font-size: 0.7rem; }
+  .float-nav { display: none; }
+}
+
+/* ============================================
+   Landscape Mobile
+   ============================================ */
+@media (max-width: 896px) and (orientation: landscape) {
+  header { position: relative; }
+  .float-nav { flex-direction: row; inset-block-end: var(--space-xs); inset-inline-start: 50%; transform: translateX(-50%); }
+}
+
+/* ============================================
+   High Contrast
+   ============================================ */
+@media (prefers-contrast: high) {
+  :root { --border: #ffffff; --text-secondary: var(--text-primary); }
+  [data-theme="light"] { --border: #000000; }
+  .tag, nav a, .float-nav-btn, .back-to-top { border: 2px solid currentColor; }
+}
+
+/* ============================================
+   Print
+   ============================================ */
+@media print {
+  header, nav, .float-nav, .back-to-top, .theme-toggle,
+  .mobile-menu-btn, .mobile-menu-checkbox, .collapse-btn, .copy-btn { display: none; }
+  main { max-width: none; padding: 0; }
+  section { break-inside: avoid; }
+  section.collapsed .section-content { max-height: none; opacity: 1; }
+  .doc-row { grid-template-columns: 1fr; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; }
+  a { text-decoration: underline; }
+}
+    </style>
+  </head>
+  <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header role="banner">
+      <h1><span>opencode-cache-core</span> plugin docs</h1>
+      <div class="header-controls">
+        <button class="theme-toggle" aria-label="Toggle theme" type="button">
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+        <a href="https://github.com/yriveiro/opencode-cache-core" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="View on GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+        <label for="mobile-menu-toggle" class="mobile-menu-btn" aria-label="Toggle navigation menu">
+          <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+          <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </label>
+      </div>
+    </header>
+
+    <input type="checkbox" id="mobile-menu-toggle" class="mobile-menu-checkbox" aria-hidden="true"/>
+
+    <nav aria-label="Documentation navigation">
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#configuration">Configuration</a>
+      <a href="#tools">Tool behavior</a>
+      <a href="#code-walkthrough">Code walkthrough</a>
+    </nav>
+
+    <main id="main-content" role="main">
+
+      <!-- ======================================================
+           OVERVIEW
+           ====================================================== -->
+      <div id="overview" class="page-section">
+
+        <section id="overview-intro">
+          <div class="intro">
+            <h2>Plugin overview</h2>
+            <p>The plugin wraps cache indexing and search into a small OpenCode-compatible package with explicit configuration resolution, runtime notifications, and a compatibility permission hook.</p>
+          </div>
+        </section>
+
+        <section id="what-ships-today">
+          <h2 class="section-header">
+            <span>What ships today</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="card-grid">
+              <article class="card">
+                <h3>cache_status</h3>
+                <p>Reports readiness, freshness, configured scopes, and indexed file counts when the index can be loaded.</p>
+              </article>
+              <article class="card">
+                <h3>cache_search</h3>
+                <p>Searches the cache index by substring or regular expression, supports scope filtering, and returns excerpts with file and line numbers.</p>
+              </article>
+              <article class="card">
+                <h3>permission.ask</h3>
+                <p>Auto-allows directory access requests when the host is asking about the configured cache directory through the compatibility hook.</p>
+              </article>
+              <article class="card">
+                <h3>Source-driven docs</h3>
+                <p>This docs site pairs narrative with excerpts from the files in <code>src/</code> so explanations follow the implementation.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="request-flow-at-a-glance">
+          <h2 class="section-header">
+            <span>Request flow at a glance</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="architecture">
+              <pre class="mermaid">flowchart TD
+    Host[OpenCode host] --> Plugin[default plugin export]
+    Plugin --> Config[resolvePluginConfig]
+    Plugin --> Loader[createIndexLoader]
+    Plugin --> Notify[createNotificationSender]
+    Plugin --> Permission[createPermissionHandler]
+    Plugin --> Tools[createStatusTool and createSearchTool]
+    Tools --> Status[cache_status]
+    Tools --> Search[cache_search]
+    Status --> State[pathExists and readFreshness]
+    Status --> LoadIndex[loadIndex]
+    Search --> LoadIndex
+    Search --> Runtime[searchIndex]
+    Status --> Session[session.prompt notification]
+    Search --> Session</pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="how-the-package-is-assembled">
+          <h2 class="section-header">
+            <span>How the package is assembled</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The default export resolves configuration, builds notification helpers, loads or creates the cache index, then exposes two tools plus the compatibility hook <code>permission.ask</code>.</p>
+                <p><code>src/index.ts</code> is the public entrypoint that re-exports the package surface, while the actual plugin assembly lives in <code>src/plugin.ts</code>.</p>
+                <ul style="margin-inline-start:var(--space-md);margin-block-end:var(--space-sm);color:var(--text-secondary);">
+                  <li style="margin-block-end:var(--space-xs);">The default export resolves configuration from plugin options, environment aliases, and built-in defaults before any tool is created.</li>
+                  <li style="margin-block-end:var(--space-xs);">Index loading stays lazy through <code>createIndexLoader()</code>, so tools can reuse a persisted JSON index when it already exists.</li>
+                  <li style="margin-block-end:var(--space-xs);">The assembled hooks expose two tools plus the narrow <code>permission.ask</code> compatibility handler.</li>
+                </ul>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/plugin.ts</span>
+                    <span class="lines">Lines 314–372</span>
+                  </div>
+                  <pre><code class="language-ts">314 const createPlugin: Plugin = async (
+315   context: PluginInput,
+316   options?: PluginOptions,
+317 ): Promise&lt;Hooks&gt; =&gt; {
+318   const pluginContext: PluginContext = {
+319     ...context,
+320     config: options,
+321   };
+322   const config = resolvePluginConfig(pluginContext);
+323   const client = resolveClient(pluginContext);
+324   const sendNotification = createNotificationSender({
+325     client,
+326     service: "opencode-cache-core-plugin",
+327   });
+328   const loadIndex = createIndexLoader&lt;Index&lt;string&gt;&gt;({
+329     indexFile: config.indexFile,
+330     readyPath: config.readyPath,
+331     createIndex: async () =&gt;
+332       buildIndex({
+333         cacheDir: config.cacheDir,
+334         sections: config.sections,
+335       }),
+336     persistIndex: async (index) =&gt; writeIndex(config.indexFile, index),
+337   });
+338   const scopes = Object.keys(config.sections);
+339   const tools = {
+340     [config.statusToolName]: createStatusTool({
+341       description: "Report cache index readiness, freshness, and configured scopes.",
+342       notificationTitle: "Cache status",
+343       buildOutput: async () =&gt; buildStatusOutput(config, loadIndex),
+344       sendNotification,
+345     }),
+346     [config.searchToolName]: createSearchTool&lt;Index&lt;string&gt;, string&gt;({
+347       description: "Search the configured cache index by substring or regular expression.",
+348       notificationTitle: "Cache search",
+349       missingOutput: "Cache index is unavailable. Confirm the ready marker path or build the cache index.",
+350       scopeValues: buildScopeValues(scopes),
+351       loadIndex,
+352       search: async ({ index, query, scope, regex, caseSensitive, limit }): Promise&lt;SearchResult&lt;string&gt;&gt; =&gt;
+353         searchIndex(index, query, {
+354           scope,
+355           regex,
+356           caseSensitive,
+357           limit,
+358         }),
+359       sendNotification,
+360     }),
+361   };
+362 
+363   return createPluginHooks({
+364     client,
+365     service: "opencode-cache-core-plugin",
+366     initMessage: `initialized cache plugin for ${config.cacheDir}`,
+367     permissionAsk: createPermissionHandler(config.cacheDir),
+368     tools,
+369   });
+370 };
+371 
+372 export default createPlugin;</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end #overview -->
+
+      <!-- ======================================================
+           ARCHITECTURE
+           ====================================================== -->
+      <div id="architecture" class="page-section">
+
+        <section id="architecture-intro">
+          <div class="intro">
+            <h2>Architecture and feature map</h2>
+            <p>The repository is intentionally split into small files so each stage of cache handling stays independently understandable.</p>
+          </div>
+        </section>
+
+        <section id="module-responsibilities">
+          <h2 class="section-header">
+            <span>Module responsibilities</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div style="overflow-x:auto;margin-block-end:var(--space-lg);">
+              <table class="doc-table">
+                <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+                <tbody>
+                  <tr><td><code>src/index.ts</code></td><td>Public entrypoint that re-exports the package API, helper functions, types, and the default plugin export from <code>src/plugin.ts</code>.</td></tr>
+                  <tr><td><code>src/plugin.ts</code></td><td>Resolves configuration, creates the notification sender and index loader, wires both tools, and returns the hook contract.</td></tr>
+                  <tr><td><code>src/indexing.ts</code></td><td>Scans each configured section and records sorted relative file paths per scope in the serialized index.</td></tr>
+                  <tr><td><code>src/storage.ts</code></td><td>Reads freshness markers, loads and writes the index JSON, and decides when a missing stored index should be rebuilt.</td></tr>
+                  <tr><td><code>src/search.ts</code></td><td>Builds the matcher, reads indexed files, scans lines, and returns structured hits with scope, file, line, and excerpt.</td></tr>
+                  <tr><td><code>src/tools.ts</code></td><td>Defines the host-facing <code>cache_status</code> and <code>cache_search</code> tool wrappers, schemas, output formatting, and notification dispatch.</td></tr>
+                  <tr><td><code>src/permissions.ts</code></td><td>Implements the narrow <code>permission.ask</code> compatibility check for external directory requests that target the configured cache directory.</td></tr>
+                  <tr><td><code>src/notifications.ts</code></td><td>Builds prompt-style notification text and sends it back through the active session with debug logging on failure.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="index-lifecycle">
+          <h2 class="section-header">
+            <span>Index lifecycle</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="architecture">
+              <pre class="mermaid">flowchart LR
+    Start[loadIndex call] --> Read["readIndex(indexFile)"]
+    Read --> Found{stored index found?}
+    Found -->|yes| ReturnStored[return stored index]
+    Found -->|no| Ready{ready marker exists?}
+    Ready -->|no| ReturnNull[return null]
+    Ready -->|yes| Build["createIndex()"]
+    Build --> Persist["persistIndex() or writeIndex()"]
+    Persist --> ReturnBuilt[return new index]</pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="index-construction-stays-scope-aware">
+          <h2 class="section-header">
+            <span>Index construction stays scope-aware</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>buildIndex()</code> receives the resolved cache directory and a scope map. It iterates the configured sections, scans each <code>baseDir</code> with its own glob-style patterns, and stores the resulting relative file list under that scope key.</p>
+                <p>That structure matters later because search can either scan every section or limit execution to one named scope without recomputing filesystem state.</p>
+                <aside class="callout">
+                  <h3>Feature tie-in</h3>
+                  <p>The docs, code, or any other cached corpus can be separated into dedicated scopes with their own base directory and glob patterns.</p>
+                </aside>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/indexing.ts</span>
+                    <span class="lines">Lines 90–109</span>
+                  </div>
+                  <pre><code class="language-ts"> 90 export async function buildIndex&lt;TScope extends string&gt;(input: {
+ 91   cacheDir: string;
+ 92   sections: Record&lt;TScope, SectionDefinition&gt;;
+ 93 }): Promise&lt;Index&lt;TScope&gt;&gt; {
+ 94   const sections = {} as Record&lt;TScope, Section&gt;;
+ 95   const entries = Object.entries(input.sections) as Array&lt;[TScope, SectionDefinition]&gt;;
+ 96 
+ 97   for (const [scope, definition] of entries) {
+ 98     sections[scope] = {
+ 99       baseDir: definition.baseDir,
+100       files: await scanRelativeFiles(definition.baseDir, definition.patterns),
+101     };
+102   }
+103 
+104   return {
+105     createdAt: new Date().toISOString(),
+106     cacheDir: input.cacheDir,
+107     sections,
+108   };
+109 }</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="lifecycle-keeps-runtime-startup-cheap">
+          <h2 class="section-header">
+            <span>Lifecycle keeps runtime startup cheap</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>loadIndex()</code> first attempts to read the persisted JSON index. Only when that file is missing and the ready marker exists does it call the supplied index builder and optionally persist the fresh result.</p>
+                <p><code>createIndexLoader()</code> packages that behavior into the lazy loader used by the tools, which keeps startup cheap while still recovering from a missing serialized index.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/storage.ts</span>
+                    <span class="lines">Lines 68–101</span>
+                  </div>
+                  <pre><code class="language-ts"> 68 export async function loadIndex&lt;TIndex&gt;(input: {
+ 69   indexFile: string;
+ 70   readyPath: string;
+ 71   createIndex: () =&gt; Promise&lt;TIndex&gt;;
+ 72   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
+ 73 }): Promise&lt;TIndex | null&gt; {
+ 74   const storedIndex = await readIndex&lt;TIndex&gt;(input.indexFile);
+ 75   if (storedIndex != null) {
+ 76     return storedIndex;
+ 77   }
+ 78 
+ 79   const ready = await pathExists(input.readyPath);
+ 80   if (!ready) {
+ 81     return null;
+ 82   }
+ 83 
+ 84   const index = await input.createIndex();
+ 85   if (input.persistIndex != null) {
+ 86     await input.persistIndex(index);
+ 87   } else {
+ 88     await writeIndex(input.indexFile, index);
+ 89   }
+ 90 
+ 91   return index;
+ 92 }
+ 93 
+ 94 export function createIndexLoader&lt;TIndex&gt;(input: {
+ 95   indexFile: string;
+ 96   readyPath: string;
+ 97   createIndex: () =&gt; Promise&lt;TIndex&gt;;
+ 98   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
+ 99 }): () =&gt; Promise&lt;TIndex | null&gt; {
+100   return async (): Promise&lt;TIndex | null&gt; =&gt; loadIndex(input);
+101 }</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end #architecture -->
+
+      <!-- ======================================================
+           CONFIGURATION
+           ====================================================== -->
+      <div id="configuration" class="page-section">
+
+        <section id="configuration-intro">
+          <div class="intro">
+            <h2>Configuration and env mapping</h2>
+            <p>The plugin reads from context config first, then environment variables, and finally falls back to safe defaults rooted in the user's cache directory.</p>
+          </div>
+        </section>
+
+        <section id="resolution-order">
+          <h2 class="section-header">
+            <span>Resolution order</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <ul style="margin-inline-start:var(--space-md);margin-block-end:var(--space-sm);color:var(--text-secondary);">
+              <li style="margin-block-end:var(--space-xs);">Nested <code>context.config.cache</code> values win first.</li>
+              <li style="margin-block-end:var(--space-xs);">Top-level <code>context.config</code> values are read next for compatibility.</li>
+              <li style="margin-block-end:var(--space-xs);">Environment variables fill in any missing values.</li>
+              <li style="margin-block-end:var(--space-xs);">Defaults are used when neither config nor env values are present.</li>
+            </ul>
+            <aside class="callout">
+              <h3>Compatibility note</h3>
+              <p>Environment lookup accepts both <code>OPENCODE_CACHE_*</code> names and shorter <code>OC_CACHE_*</code> aliases.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section id="supported-fields">
+          <h2 class="section-header">
+            <span>Supported fields</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div style="overflow-x:auto;margin-block-end:var(--space-lg);">
+              <table class="doc-table">
+                <thead><tr><th>Field</th><th>Environment variables</th><th>Default</th></tr></thead>
+                <tbody>
+                  <tr><td><code>cacheDir</code></td><td><code>OPENCODE_CACHE_DIR</code>, <code>OC_CACHE_DIR</code></td><td><code>~/.cache/opencode-cache</code></td></tr>
+                  <tr><td><code>indexFile</code></td><td><code>OPENCODE_CACHE_INDEX_FILE</code>, <code>OC_CACHE_INDEX_FILE</code></td><td><code>&lt;cacheDir&gt;/.opencode-plugin/index.json</code></td></tr>
+                  <tr><td><code>readyPath</code></td><td><code>OPENCODE_CACHE_READY_PATH</code>, <code>OC_CACHE_READY_PATH</code></td><td><code>&lt;cacheDir&gt;/.opencode-plugin/ready</code></td></tr>
+                  <tr><td><code>sections</code></td><td><code>OPENCODE_CACHE_SECTIONS_JSON</code>, <code>OC_CACHE_SECTIONS_JSON</code></td><td>single <code>cache</code> scope rooted at <code>cacheDir</code></td></tr>
+                  <tr><td><code>maxAgeSeconds</code></td><td><code>OPENCODE_CACHE_MAX_AGE_SECONDS</code>, <code>OC_CACHE_MAX_AGE_SECONDS</code></td><td><code>86400</code></td></tr>
+                  <tr><td><code>statusToolName</code></td><td><code>OPENCODE_CACHE_STATUS_TOOL_NAME</code>, <code>OC_CACHE_STATUS_TOOL_NAME</code></td><td><code>cache_status</code></td></tr>
+                  <tr><td><code>searchToolName</code></td><td><code>OPENCODE_CACHE_SEARCH_TOOL_NAME</code>, <code>OC_CACHE_SEARCH_TOOL_NAME</code></td><td><code>cache_search</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="sections-define-search-scopes">
+          <h2 class="section-header">
+            <span>Sections define search scopes</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The <code>sections</code> object maps a scope name to a <code>baseDir</code> and a list of file patterns. Each key becomes a selectable search scope in the tool layer.</p>
+                <p>Use separate sections when you want a clean distinction between docs, source, generated text, or any other cached corpus.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">Example sections JSON</span>
+                    <span class="lines">JSON</span>
+                  </div>
+                  <pre><code class="language-json">{
+  "docs": {
+    "baseDir": "/absolute/path/to/cache/docs",
+    "patterns": ["**/*.md", "**/*.txt"]
+  },
+  "code": {
+    "baseDir": "/absolute/path/to/cache/code",
+    "patterns": ["**/*.ts", "**/*.tsx", "**/*.js"]
+  }
+}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="configuration-resolution-in-code">
+          <h2 class="section-header">
+            <span>Configuration resolution in code</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>readConfig()</code> pulls nested and top-level plugin options, while <code>resolvePluginConfig()</code> merges them with environment aliases, default cache paths, default sections, and fallback tool names.</p>
+                <p>This is the implementation to review when validating how a deployment will behave with partial configuration, relative paths, or <code>OPENCODE_CACHE_*</code> versus <code>OC_CACHE_*</code> environment input.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/plugin.ts</span>
+                    <span class="lines">Lines 116–255</span>
+                  </div>
+                  <pre><code class="language-ts">116 function readConfig(context: PluginContext, workingDirectory: string): PluginConfig {
+117   if (!isRecord(context.config)) {
+118     return {};
+119   }
+120 
+121   const nestedConfig = isRecord(context.config.cache) ? context.config.cache : {};
+122 
+123   return {
+124     cacheDir: readString(nestedConfig.cacheDir ?? context.config.cacheDir),
+125     indexFile: readString(nestedConfig.indexFile ?? context.config.indexFile),
+126     readyPath: readString(nestedConfig.readyPath ?? context.config.readyPath),
+127     sections: readSections(nestedConfig.sections ?? context.config.sections, workingDirectory),
+128     maxAgeSeconds: readInteger(nestedConfig.maxAgeSeconds ?? context.config.maxAgeSeconds),
+129     statusToolName: readString(nestedConfig.statusToolName ?? context.config.statusToolName),
+130     searchToolName: readString(nestedConfig.searchToolName ?? context.config.searchToolName),
+131   };
+132 }
+133 
+134 function readEnvValue(
+135   env: Record&lt;string, string | undefined&gt;,
+136   ...keys: string[]
+137 ): string | undefined {
+138   for (const key of keys) {
+139     const value = readString(env[key]);
+140     if (value != null) {
+141       return value;
+142     }
+143   }
+144 
+145   return undefined;
+146 }
+147 
+215 function resolvePluginConfig(context: PluginContext): ResolvedPluginConfig {
+216   const env = readEnv(context);
+217   const workingDirectory = readString(context.cwd) ?? context.directory;
+218   const config = readConfig(context, workingDirectory);
+219   const defaultCacheDir = join(homedir(), ".cache", "opencode-cache");
+220   const cacheDir = resolvePath(
+221     config.cacheDir ?? readEnvValue(env, "OPENCODE_CACHE_DIR", "OC_CACHE_DIR") ?? defaultCacheDir,
+222     workingDirectory,
+223   );
+224   const indexFile = resolvePath(
+225     config.indexFile ??
+226       readEnvValue(env, "OPENCODE_CACHE_INDEX_FILE", "OC_CACHE_INDEX_FILE") ??
+227       join(cacheDir, ".opencode-plugin", "index.json"),
+228     workingDirectory,
+229   );
+230   const readyPath = resolvePath(
+231     config.readyPath ??
+232       readEnvValue(env, "OPENCODE_CACHE_READY_PATH", "OC_CACHE_READY_PATH") ??
+233       join(cacheDir, ".opencode-plugin", "ready"),
+234     workingDirectory,
+235   );
+236   const sections = config.sections ?? readEnvSections(env, workingDirectory) ?? buildDefaultSections(cacheDir);
+237   const maxAgeSeconds =
+238     config.maxAgeSeconds ??
+239     Number.parseInt(readEnvValue(env, "OPENCODE_CACHE_MAX_AGE_SECONDS", "OC_CACHE_MAX_AGE_SECONDS") ?? "86400", 10);
+240 
+241   return {
+242     cacheDir,
+243     indexFile,
+244     readyPath,
+245     sections,
+246     maxAgeSeconds: Number.isFinite(maxAgeSeconds) &amp;&amp; maxAgeSeconds &gt; 0 ? maxAgeSeconds : 86400,
+247     statusToolName:
+248       config.statusToolName ??
+249       readEnvValue(env, "OPENCODE_CACHE_STATUS_TOOL_NAME", "OC_CACHE_STATUS_TOOL_NAME") ??
+250       "cache_status",
+251     searchToolName:
+252       config.searchToolName ??
+253       readEnvValue(env, "OPENCODE_CACHE_SEARCH_TOOL_NAME", "OC_CACHE_SEARCH_TOOL_NAME") ??
+254       "cache_search",
+255   };</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end #configuration -->
+
+      <!-- ======================================================
+           TOOLS
+           ====================================================== -->
+      <div id="tools" class="page-section">
+
+        <section id="tools-intro">
+          <div class="intro">
+            <h2>Tool behavior and compatibility hooks</h2>
+            <p>The host-facing surface area is small: two tools and one compatibility hook. The implementation focuses on predictable output and lightweight host integration.</p>
+          </div>
+        </section>
+
+        <section id="behavior-summary">
+          <h2 class="section-header">
+            <span>Behavior summary</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="card-grid">
+              <article class="card">
+                <h3>cache_status</h3>
+                <p>Builds a readiness report from the ready marker path, freshness timestamp, index loader, and configured scopes.</p>
+              </article>
+              <article class="card">
+                <h3>cache_search</h3>
+                <p>Loads the index on demand, handles missing-index messaging, runs substring or regex search, then pushes a notification back to the active session.</p>
+              </article>
+              <article class="card">
+                <h3>Notifications</h3>
+                <p>Both tools send a prompt-style message so results show up in the session as well as in the returned tool output.</p>
+              </article>
+              <article class="card">
+                <h3>permission.ask</h3>
+                <p>Only sets <code>output.status = "allow"</code> when the request targets the configured cache directory through the host's permission request payload.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="tool-execution-path">
+          <h2 class="section-header">
+            <span>Tool execution path</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="architecture">
+              <pre class="mermaid">sequenceDiagram
+    participant Host
+    participant Tool as cache_search.execute
+    participant Loader as loadIndex
+    participant Runtime as searchIndex
+    participant Session as session.prompt
+    Host->>Tool: execute(query, scope, options)
+    Tool->>Loader: load index
+    Loader-->>Tool: index or null
+    alt index missing
+        Tool->>Session: send missing-index notification
+        Tool-->>Host: missing output
+    else index available
+        Tool->>Runtime: search(index, query, scope, flags)
+        Runtime-->>Tool: SearchResult
+        Tool->>Session: send formatted notification
+        Tool-->>Host: formatted output
+    end</pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="permission-matching-is-intentionally-narrow">
+          <h2 class="section-header">
+            <span>Permission matching is intentionally narrow</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The compatibility hook does not blanket-allow all requests. It first checks that the host is asking for external directory access and then tests whether the request title or patterns include the configured cache directory.</p>
+                <p>That makes the behavior predictable for hosts that still use <code>permission.ask</code> without affecting unrelated requests.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/permissions.ts</span>
+                    <span class="lines">Lines 5–35</span>
+                  </div>
+                  <pre><code class="language-ts">  5 function matchesPermission(cacheDir: string, request: PermissionRequest): boolean {
+  6   if (request.type !== "external_directory") {
+  7     return false;
+  8   }
+  9 
+ 10   const patterns = Array.isArray(request.pattern)
+ 11     ? request.pattern
+ 12     : request.pattern
+ 13       ? [request.pattern]
+ 14       : [];
+ 15 
+ 16   return request.title.includes(cacheDir) || patterns.some((pattern) =&gt; pattern.includes(cacheDir));
+ 17 }
+ 18 
+ 19 export function createPermissionHandler(
+ 20   cacheDir: string,
+ 21 ): NonNullable&lt;Hooks["permission.ask"]&gt; {
+ 22   return async (
+ 23     input: Parameters&lt;NonNullable&lt;Hooks["permission.ask"]&gt;&gt;[0],
+ 24     output: Parameters&lt;NonNullable&lt;Hooks["permission.ask"]&gt;&gt;[1],
+ 25   ): Promise&lt;void&gt; =&gt; {
+ 26     if (
+ 27       matchesPermission(cacheDir, {
+ 28         type: input.type,
+ 29         title: input.title,
+ 30         pattern: input.pattern,
+ 31       })
+ 32     ) {
+ 33       output.status = "allow";
+ 34     }
+ 35   };</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="search-tools-format-results-after-execution">
+          <h2 class="section-header">
+            <span>Search tools format results after execution</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The search tool wrapper handles the common host-facing behavior: define the argument schema, load the index on demand, emit the missing-index notification when needed, and format the final hit list for the host.</p>
+                <p>The actual matching work is delegated to <code>searchIndex()</code> in <code>src/search.ts</code>, which keeps the wrapper focused on validation, presentation, and session messaging.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/tools.ts</span>
+                    <span class="lines">Lines 41–95</span>
+                  </div>
+                  <pre><code class="language-ts"> 41 export function createSearchTool&lt;TIndex, TScope extends string&gt;(input: {
+ 42   description: string;
+ 43   notificationTitle: string;
+ 44   missingOutput: string;
+ 45   scopeValues: readonly [typeof ALL_SCOPE, ...TScope[]];
+ 46   loadIndex: () =&gt; Promise&lt;TIndex | null&gt;;
+ 47   search: (input: {
+ 48     index: TIndex;
+ 49     query: string;
+ 50     scope?: TScope | typeof ALL_SCOPE;
+ 51     regex?: boolean;
+ 52     caseSensitive?: boolean;
+ 53     limit?: number;
+ 54   }) =&gt; Promise&lt;SearchResult&lt;TScope&gt;&gt;;
+ 55   sendNotification: (sessionID: string, message: string) =&gt; Promise&lt;void&gt;;
+ 56 }): ToolDefinition {
+ 57   return tool({
+ 58     description: input.description,
+ 59     args: {
+ 60       query: tool.schema.string().describe("Substring or regular expression to search for."),
+ 61       scope: tool.schema
+ 62         .enum(input.scopeValues)
+ 63         .optional()
+ 64         .describe(`Search scope: ${input.scopeValues.join(", ")}.`),
+ 65       regex: tool.schema.boolean().optional().describe("Treat query as a regular expression."),
+ 66       case_sensitive: tool.schema.boolean().optional().describe("Use case-sensitive matching."),
+ 67       limit: tool.schema.number().int().min(1).max(100).optional().describe("Maximum number of hits to return."),
+ 68     },
+ 69     async execute(args, context: ToolContext) {
+ 70       const index = await input.loadIndex();
+ 71       if (index == null) {
+ 72         await input.sendNotification(
+ 73           context.sessionID,
+ 74           buildNotification(input.notificationTitle, input.missingOutput),
+ 75         );
+ 76         return input.missingOutput;
+ 77       }
+ 78 
+ 79       const output = formatSearchOutput(
+ 80         args.query,
+ 81         await input.search({
+ 82           index,
+ 83           query: args.query,
+ 84           scope: args.scope,
+ 85           regex: args.regex,
+ 86           caseSensitive: args.case_sensitive,
+ 87           limit: args.limit,
+ 88         }),
+ 89       );
+ 90 
+ 91       await input.sendNotification(context.sessionID, buildNotification(input.notificationTitle, output));
+ 92       return output;
+ 93     },
+ 94   });
+ 95 }</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="notifications-stay-separate-from-tool-logic">
+          <h2 class="section-header">
+            <span>Notifications stay separate from tool logic</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>buildNotification()</code> creates the prompt-style message body shared by both tools, and <code>createNotificationSender()</code> pushes that message into the active session with <code>noReply</code> set.</p>
+                <p>If the session prompt fails, the sender falls back to debug logging through the plugin client instead of failing the tool execution path.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/notifications.ts</span>
+                    <span class="lines">Lines 3–31</span>
+                  </div>
+                  <pre><code class="language-ts">  3 export function buildNotification(title: string, output: string): string {
+  4   return [`▣ ${title}`, "", output].join("\n");
+  5 }
+  6 
+  7 export function createNotificationSender(input: {
+  8   client: PluginInput["client"];
+  9   service: string;
+ 10 }): (sessionID: string, message: string) =&gt; Promise&lt;void&gt; {
+ 11   return async (sessionID: string, message: string): Promise&lt;void&gt; =&gt; {
+ 12     try {
+ 13       await input.client.session.prompt({
+ 14         path: { id: sessionID },
+ 15         body: {
+ 16           noReply: true,
+ 17           parts: [{ type: "text", text: message, ignored: true }],
+ 18         },
+ 19       });
+ 20     } catch (error: unknown) {
+ 21       const messageText = error instanceof Error ? error.message : String(error);
+ 22       await input.client.app.log({
+ 23         body: {
+ 24           service: input.service,
+ 25           level: "debug",
+ 26           message: `failed to send notification: ${messageText}`,
+ 27         },
+ 28       });
+ 29     }
+ 30   };
+ 31 }</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end #tools -->
+
+      <!-- ======================================================
+           CODE WALKTHROUGH
+           ====================================================== -->
+      <div id="code-walkthrough" class="page-section">
+
+        <section id="code-walkthrough-intro">
+          <div class="intro">
+            <h2>Code walkthrough</h2>
+            <p>This section is optimized for the two-column reading experience: explanation on the left, relevant source excerpts on the right.</p>
+          </div>
+        </section>
+
+        <section id="step-0-start-from-the-public-entrypoint">
+          <h2 class="section-header">
+            <span>Step 0: start from the public entrypoint</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>src/index.ts</code> is intentionally small. It re-exports the package's types and helper functions, then re-exports the default plugin implementation from <code>src/plugin.ts</code>.</p>
+                <p>That keeps imports stable for consumers while letting the heavier runtime wiring stay in a dedicated module.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/index.ts</span>
+                    <span class="lines">Lines 1–17</span>
+                  </div>
+                  <pre><code class="language-ts">  1 export { ALL_SCOPE, type Freshness, type Index, type PermissionRequest, type SearchHit, type SearchOptions, type SearchResult, type Section, type SectionDefinition } from "./types";
+  2 export { buildIndex } from "./indexing";
+  3 export {
+  4   createIndexLoader,
+  5   loadIndex,
+  6   pathExists,
+  7   readFreshness,
+  8   readIndex,
+  9   writeIndex,
+ 10   writeTimestamp,
+ 11 } from "./storage";
+ 12 export { searchIndex } from "./search";
+ 13 export { buildNotification, createNotificationSender } from "./notifications";
+ 14 export { createPermissionHandler } from "./permissions";
+ 15 export { createSearchTool, createStatusTool } from "./tools";
+ 16 export { createPluginHooks } from "./plugin";
+ 17 export { default } from "./plugin";</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-1-resolve-config-and-defaults">
+          <h2 class="section-header">
+            <span>Step 1: resolve config and defaults</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The plugin reads nested plugin options, compatibility top-level options, and environment overrides before normalizing them into one resolved config object with absolute paths and default section definitions.</p>
+                <p>This is the main control point for cache directory resolution, ready-marker paths, index-file paths, tool names, and environment alias handling.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/plugin.ts</span>
+                    <span class="lines">Lines 101–255</span>
+                  </div>
+                  <pre><code class="language-ts">101 function readEnv(context: PluginContext): Record&lt;string, string | undefined&gt; {
+102   const merged = { ...process.env };
+103   if (!isRecord(context.env)) {
+104     return merged;
+105   }
+106 
+107   for (const [key, value] of Object.entries(context.env)) {
+108     if (typeof value === "string" || value === undefined) {
+109       merged[key] = value;
+110     }
+111   }
+112 
+113   return merged;
+114 }
+115 
+116 function readConfig(context: PluginContext, workingDirectory: string): PluginConfig {
+117   if (!isRecord(context.config)) {
+118     return {};
+119   }
+120 
+121   const nestedConfig = isRecord(context.config.cache) ? context.config.cache : {};
+122 
+123   return {
+124     cacheDir: readString(nestedConfig.cacheDir ?? context.config.cacheDir),
+125     indexFile: readString(nestedConfig.indexFile ?? context.config.indexFile),
+126     readyPath: readString(nestedConfig.readyPath ?? context.config.readyPath),
+127     sections: readSections(nestedConfig.sections ?? context.config.sections, workingDirectory),
+128     maxAgeSeconds: readInteger(nestedConfig.maxAgeSeconds ?? context.config.maxAgeSeconds),
+129     statusToolName: readString(nestedConfig.statusToolName ?? context.config.statusToolName),
+130     searchToolName: readString(nestedConfig.searchToolName ?? context.config.searchToolName),
+131   };
+132 }
+133 
+215 function resolvePluginConfig(context: PluginContext): ResolvedPluginConfig {
+216   const env = readEnv(context);
+217   const workingDirectory = readString(context.cwd) ?? context.directory;
+218   const config = readConfig(context, workingDirectory);
+219   const defaultCacheDir = join(homedir(), ".cache", "opencode-cache");
+220   const cacheDir = resolvePath(
+221     config.cacheDir ?? readEnvValue(env, "OPENCODE_CACHE_DIR", "OC_CACHE_DIR") ?? defaultCacheDir,
+222     workingDirectory,
+223   );
+254   ...
+255 };</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-2-build-or-reuse-the-index">
+          <h2 class="section-header">
+            <span>Step 2: build or reuse the index</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The loader defers work until a tool actually needs the index. If a stored JSON file exists, it is reused immediately. Otherwise the loader checks the ready marker and only then calls the index builder.</p>
+                <p>That separation keeps persistence in <code>src/storage.ts</code> and the filesystem scan in <code>src/indexing.ts</code>, which makes the fallback path explicit at the line level.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/storage.ts</span>
+                    <span class="lines">Lines 68–101</span>
+                  </div>
+                  <pre><code class="language-ts"> 68 export async function loadIndex&lt;TIndex&gt;(input: {
+ 69   indexFile: string;
+ 70   readyPath: string;
+ 71   createIndex: () =&gt; Promise&lt;TIndex&gt;;
+ 72   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
+ 73 }): Promise&lt;TIndex | null&gt; {
+ 74   const storedIndex = await readIndex&lt;TIndex&gt;(input.indexFile);
+ 75   if (storedIndex != null) {
+ 76     return storedIndex;
+ 77   }
+ 78 
+ 79   const ready = await pathExists(input.readyPath);
+ 80   if (!ready) {
+ 81     return null;
+ 82   }
+ 83 
+ 84   const index = await input.createIndex();
+ 85   if (input.persistIndex != null) {
+ 86     await input.persistIndex(index);
+ 87   } else {
+ 88     await writeIndex(input.indexFile, index);
+ 89   }
+ 90 
+ 91   return index;
+ 92 }
+ 93 
+ 94 export function createIndexLoader&lt;TIndex&gt;(input: {
+ 95   indexFile: string;
+ 96   readyPath: string;
+ 97   createIndex: () =&gt; Promise&lt;TIndex&gt;;
+ 98   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
+ 99 }): () =&gt; Promise&lt;TIndex | null&gt; {
+100   return async (): Promise&lt;TIndex | null&gt; =&gt; loadIndex(input);
+101 }</code></pre>
+                </div>
+
+                <div class="code-content" style="margin-block-start:var(--space-sm);">
+                  <div class="code-header">
+                    <span class="filename">src/indexing.ts</span>
+                    <span class="lines">Lines 90–109</span>
+                  </div>
+                  <pre><code class="language-ts"> 90 export async function buildIndex&lt;TScope extends string&gt;(input: {
+ 91   cacheDir: string;
+ 92   sections: Record&lt;TScope, SectionDefinition&gt;;
+ 93 }): Promise&lt;Index&lt;TScope&gt;&gt; {
+ 94   const sections = {} as Record&lt;TScope, Section&gt;;
+ 95   const entries = Object.entries(input.sections) as Array&lt;[TScope, SectionDefinition]&gt;;
+ 96 
+ 97   for (const [scope, definition] of entries) {
+ 98     sections[scope] = {
+ 99       baseDir: definition.baseDir,
+100       files: await scanRelativeFiles(definition.baseDir, definition.patterns),
+101     };
+102   }
+103 
+104   return {
+105     createdAt: new Date().toISOString(),
+106     cacheDir: input.cacheDir,
+107     sections,
+108   };
+109 }</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-3-expose-host-facing-tools">
+          <h2 class="section-header">
+            <span>Step 3: expose host-facing tools</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>Once config, client shims, and the index loader exist, the plugin builds the status and search tools with descriptions, notifications, and execution handlers.</p>
+                <p>The final return value is deliberately small: a tools map and the optional compatibility hook.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/plugin.ts</span>
+                    <span class="lines">Lines 314–372</span>
+                  </div>
+                  <pre><code class="language-ts">314 const createPlugin: Plugin = async (
+315   context: PluginInput,
+316   options?: PluginOptions,
+317 ): Promise&lt;Hooks&gt; =&gt; {
+318   const pluginContext: PluginContext = {
+319     ...context,
+320     config: options,
+321   };
+322   const config = resolvePluginConfig(pluginContext);
+323   const client = resolveClient(pluginContext);
+324   const sendNotification = createNotificationSender({
+325     client,
+326     service: "opencode-cache-core-plugin",
+327   });
+328   const loadIndex = createIndexLoader&lt;Index&lt;string&gt;&gt;({
+329     indexFile: config.indexFile,
+330     readyPath: config.readyPath,
+331     createIndex: async () =&gt;
+332       buildIndex({
+333         cacheDir: config.cacheDir,
+334         sections: config.sections,
+335       }),
+336     persistIndex: async (index) =&gt; writeIndex(config.indexFile, index),
+337   });
+338   const scopes = Object.keys(config.sections);
+339   const tools = {
+340     [config.statusToolName]: createStatusTool({...}),
+341     [config.searchToolName]: createSearchTool({...}),
+342   };
+363   return createPluginHooks({
+364     client,
+365     service: "opencode-cache-core-plugin",
+366     initMessage: `initialized cache plugin for ${config.cacheDir}`,
+367     permissionAsk: createPermissionHandler(config.cacheDir),
+368     tools,
+369   });
+370 };
+371 
+372 export default createPlugin;</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-4-run-the-search-algorithm">
+          <h2 class="section-header">
+            <span>Step 4: run the search algorithm</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>searchIndex()</code> loops through each selected scope, reads each indexed file, splits content into lines, and tests the query against each line.</p>
+                <p>Hits carry scope, file, line, and excerpt data so the tool wrapper can present useful output without re-reading the file again.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/search.ts</span>
+                    <span class="lines">Lines 25–84</span>
+                  </div>
+                  <pre><code class="language-ts"> 25 export async function searchIndex&lt;TScope extends string&gt;(
+ 26   index: Index&lt;TScope&gt;,
+ 27   query: string,
+ 28   options?: SearchOptions&lt;TScope&gt;,
+ 29 ): Promise&lt;SearchResult&lt;TScope&gt;&gt; {
+ 30   const scope = options?.scope ?? ALL_SCOPE;
+ 31   const regex = options?.regex ?? false;
+ 32   const caseSensitive = options?.caseSensitive ?? false;
+ 33   const limit = options?.limit ?? 20;
+ 34   const matcher = buildMatcher(query, regex, caseSensitive);
+ 35   const scopes = scope === ALL_SCOPE ? (Object.keys(index.sections) as TScope[]) : [scope];
+ 36   const hits: SearchHit&lt;TScope&gt;[] = [];
+ 37   let scannedFiles = 0;
+ 38 
+ 39   for (const selectedScope of scopes) {
+ 40     const section = index.sections[selectedScope];
+ 41 
+ 42     for (const relativeFile of section.files) {
+ 43       scannedFiles += 1;
+ 44 
+ 45       let content: string;
+ 46 
+ 47       try {
+ 48         content = await readFile(join(section.baseDir, relativeFile), "utf8");
+ 49       } catch {
+ 50         continue;
+ 51       }
+ 52 
+ 53       const lines = content.split(/\r?\n/u);
+ 54 
+ 55       for (const [lineIndex, line] of lines.entries()) {
+ 56         matcher.lastIndex = 0;
+ 57         if (!matcher.test(line)) {
+ 58           continue;
+ 59         }
+ 60 
+ 61         hits.push({
+ 62           scope: selectedScope,
+ 63           file: relativeFile,
+ 64           line: lineIndex + 1,
+ 65           excerpt: trimExcerpt(line),
+ 66         });
+ 67 
+ 68         if (hits.length &gt;= limit) {
+ 69           return {
+ 70             hits,
+ 71             scannedFiles,
+ 72             scope,
+ 73           };
+ 74         }
+ 75       }
+ 76     }
+ 77   }
+ 78 
+ 79   return {
+ 80     hits,
+ 81     scannedFiles,
+ 82     scope,
+ 83   };
+ 84 }</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end #code-walkthrough -->
+
+      <footer>
+        <p>Source in <code>src/</code> &mdash; <a href="https://github.com/yriveiro/opencode-cache-core" target="_blank" rel="noopener noreferrer">github.com/yriveiro/opencode-cache-core</a></p>
+      </footer>
+
+    </main>
+
+    <nav class="float-nav" aria-label="Quick navigation">
+      <a href="#overview" class="float-nav-btn" data-tooltip="Overview" aria-label="Overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </a>
+      <a href="#architecture" class="float-nav-btn" data-tooltip="Architecture" aria-label="Architecture">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      </a>
+      <a href="#configuration" class="float-nav-btn" data-tooltip="Configuration" aria-label="Configuration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </a>
+      <a href="#tools" class="float-nav-btn" data-tooltip="Tool behavior" aria-label="Tool behavior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      </a>
+      <a href="#code-walkthrough" class="float-nav-btn" data-tooltip="Code walkthrough" aria-label="Code walkthrough">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </a>
+    </nav>
+
+    <button class="back-to-top" aria-label="Back to top" data-tooltip="Back to top" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
+    </button>
+
+    <script>
+      // Pre-configure Mermaid before it loads so it does not auto-run on
+      // DOMContentLoaded and replace the source text before we can capture it.
+      window.mermaid = window.mermaid ?? {};
+      window.mermaid.startOnLoad = false;
+
+      // Disable Mermaid auto-start before the library loads. Raw diagram source
+      // is captured later by the main script, after the DOM exists but before any
+      // explicit render call runs.
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.14.0/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+/* ============================================
+   Theme Toggle
+   ============================================ */
+const THEME_KEY = "oc-docs-theme";
+
+function getPreferredTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem(THEME_KEY, theme);
+
+  // Swap highlight.js stylesheet
+  const hljsLink = document.getElementById("hljs-theme");
+  if (hljsLink) {
+    hljsLink.href = theme === "light"
+      ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+      : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css";
+  }
+
+  reinitMermaid(theme);
+}
+
+function captureMermaidSources() {
+  document.querySelectorAll(".mermaid").forEach((el) => {
+    if (!el.getAttribute("data-mermaid-source")) {
+      el.setAttribute("data-mermaid-source", el.textContent ?? "");
+    }
+  });
+}
+
+document.querySelector(".theme-toggle")?.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme") ?? "dark";
+  applyTheme(current === "dark" ? "light" : "dark");
+});
+
+captureMermaidSources();
+applyTheme(getPreferredTheme());
+
+/* ============================================
+   Collapsible Sections
+   ============================================ */
+document.querySelectorAll(".section-header").forEach((header) => {
+  header.addEventListener("click", () => {
+    const section = header.closest("section");
+    section?.classList.toggle("collapsed");
+  });
+});
+
+/* ============================================
+   Copy Buttons
+   ============================================ */
+document.querySelectorAll(".code-content").forEach((block) => {
+  const pre = block.querySelector("pre");
+  if (!pre) return;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "copy-btn";
+  btn.setAttribute("aria-label", "Copy code");
+  btn.innerHTML = `
+    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  `;
+
+  btn.addEventListener("click", async () => {
+    const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+    try {
+      await navigator.clipboard.writeText(code);
+      btn.classList.add("copied");
+      setTimeout(() => btn.classList.remove("copied"), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  });
+
+  block.appendChild(btn);
+});
+
+/* ============================================
+   Floating Nav & Top Nav Active State (IntersectionObserver)
+   ============================================ */
+const floatNavBtns = Array.from(document.querySelectorAll(".float-nav-btn"));
+const topNavLinks  = Array.from(document.querySelectorAll("nav:not(.float-nav) a"));
+const pageSections = Array.from(document.querySelectorAll(".page-section[id]"));
+
+if (pageSections.length > 0) {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          [...floatNavBtns, ...topNavLinks].forEach((a) => {
+            const isActive = a.getAttribute("href") === `#${id}`;
+            a.classList.toggle("active", isActive);
+          });
+        }
+      });
+    },
+    { rootMargin: "-10% 0px -70% 0px" },
+  );
+
+   pageSections.forEach((s) => {
+     observer.observe(s);
+   });
+}
+
+/* ============================================
+   Back to Top Button
+   ============================================ */
+const backToTopBtn = document.querySelector(".back-to-top");
+
+if (backToTopBtn) {
+  window.addEventListener("scroll", () => {
+    backToTopBtn.classList.toggle("visible", window.scrollY > 400);
+  }, { passive: true });
+
+  backToTopBtn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+/* ============================================
+   Mermaid
+   ============================================ */
+function mermaidThemeVars(theme) {
+  if (theme === "light") {
+    return {
+      background: "#ffffff",
+      primaryColor: "#f6f8fa",
+      primaryTextColor: "#24292f",
+      primaryBorderColor: "#0969da",
+      secondaryColor: "#f6f8fa",
+      secondaryTextColor: "#24292f",
+      secondaryBorderColor: "#0969da",
+      tertiaryColor: "#ffffff",
+      tertiaryTextColor: "#24292f",
+      tertiaryBorderColor: "#d0d7de",
+      lineColor: "#0969da",
+      textColor: "#24292f",
+      mainBkg: "#ffffff",
+      nodeBkg: "#f6f8fa",
+      nodeTextColor: "#24292f",
+      nodeBorder: "#0969da",
+      clusterBkg: "#f6f8fa",
+      clusterBorder: "#d0d7de",
+      edgeLabelBackground: "#ffffff",
+      labelTextColor: "#24292f",
+    };
+  }
+  return {
+    background: "#0d1117",
+    primaryColor: "#161b22",
+    primaryTextColor: "#c9d1d9",
+    primaryBorderColor: "#58a6ff",
+    secondaryColor: "#161b22",
+    secondaryTextColor: "#c9d1d9",
+    secondaryBorderColor: "#58a6ff",
+    tertiaryColor: "#0d1117",
+    tertiaryTextColor: "#c9d1d9",
+    tertiaryBorderColor: "#30363d",
+    lineColor: "#58a6ff",
+    textColor: "#c9d1d9",
+    mainBkg: "#0d1117",
+    nodeBkg: "#161b22",
+    nodeTextColor: "#c9d1d9",
+    nodeBorder: "#58a6ff",
+    clusterBkg: "#0d1117",
+    clusterBorder: "#30363d",
+    edgeLabelBackground: "#0d1117",
+    labelTextColor: "#c9d1d9",
+  };
+}
+
+function reinitMermaid(theme) {
+  if (window.mermaid && typeof window.mermaid.initialize === "function" && typeof window.mermaid.run === "function") {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: "base",
+      themeVariables: mermaidThemeVars(theme),
+    });
+
+    // Re-render all mermaid diagrams
+    document.querySelectorAll(".mermaid").forEach((el) => {
+      const source = el.getAttribute("data-mermaid-source");
+      if (source) {
+        el.removeAttribute("data-processed");
+        el.innerHTML = source;
+      }
+    });
+
+    window.mermaid.run({ nodes: document.querySelectorAll(".mermaid") }).catch(() => {});
+  }
+}
+
+// Syntax highlighting — DOM is already parsed at this point (scripts at end of body)
+if (window.hljs) {
+  window.hljs.highlightAll();
+}
+
+// Re-run once all resources are ready.
+window.addEventListener("load", () => {
+  if (window.mermaid) {
+    reinitMermaid(getPreferredTheme());
+  }
+});
+    </script>
+  </body>
+</html>

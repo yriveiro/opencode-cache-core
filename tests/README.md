@@ -1,6 +1,6 @@
 # Tests
 
-This directory is reserved for automated tests, fixtures, and verification notes for the `oc-cache-core-plugin` package.
+This directory is reserved for automated tests, fixtures, and verification notes for the `opencode-cache-core` package.
 
 ## Intended testing strategy
 

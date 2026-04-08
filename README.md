@@ -1,4 +1,4 @@
-# oc-cache-core plugin
+# opencode-cache-core plugin
 
 Concrete OpenCode local plugin package for cache indexing and search.
 

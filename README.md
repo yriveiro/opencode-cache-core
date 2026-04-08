@@ -1,4 +1,4 @@
-# opencode-cache-core plugin
+# OpenCode Cache Core
 
 Concrete OpenCode local plugin package for cache indexing and search.
 
@@ -6,7 +6,8 @@ Concrete OpenCode local plugin package for cache indexing and search.
 
 - `src/`: plugin source files and type shims.
 - `dist/`: generated build output.
-- `docs/`: repository documentation.
+- `docs/`: documentation source files.
+- `docs-dist/`: generated documentation site.
 - `tests/`: test modules and fixtures.
 
 The package default export returns a plugin object with a `tools` map containing the cache tools and a compatibility `permission.ask` hook that auto-allows access to the configured cache directory.
@@ -60,7 +61,7 @@ Defaults:
 ## Build
 
 ```sh
-bun run tsc -p tsconfig.json
+bun run build
 ```
 
 The source entrypoint is `src/index.ts`.
@@ -68,35 +69,14 @@ The compiled plugin entrypoint is `dist/index.js`, which matches `package.json#m
 
 ## Documentation site
 
-The repo also includes a static documentation site source under `docs/`.
+The repo includes a static documentation site under `docs/`.
 
-Build the HTML docs with Bun:
-
-```sh
-bun run docs:build
-```
-
-This writes the generated site to `docs-dist/` so the documentation output stays separate from the plugin package output in `dist/`.
-
-The docs pipeline is Bun-first and TypeScript-based:
-
-- `docs/build-docs.ts` renders the site HTML into `docs-dist/`
-- `docs/site-content.ts` and `docs/render.ts` define the source-driven pages and shared helpers
-- `docs/assets/tailwind.css` is compiled into `docs-dist/assets/styles.css`
-- `docs/assets/site.js` initializes Mermaid, highlight.js, and the floating top navigation menu
-
-The generated HTML now uses CDN-hosted browser assets for Mermaid and highlight.js, while keeping the Bun-first TypeScript + Tailwind build local to the repository.
-
-Type-check the documentation source with:
-
-```sh
-bun run docs:typecheck
-```
+The documentation is provided as a pre-built HTML file (`docs/index.html`) and does not require a build process.
 
 Documentation coverage includes:
- 
- - feature and architecture overview
- - configuration and environment-variable mapping
- - tool behavior and compatibility hooks
- - a code walkthrough with explanation next to live source excerpts
- - Mermaid diagrams for lifecycle and request flow
+
+- feature and architecture overview
+- configuration and environment-variable mapping
+- tool behavior and compatibility hooks
+- a code walkthrough with explanation next to live source excerpts
+- Mermaid diagrams for lifecycle and request flow

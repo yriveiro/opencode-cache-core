@@ -5,7 +5,11 @@ import {
 } from "@opencode-ai/plugin";
 
 import { buildNotification } from "./notifications";
-import type { ALL_SCOPE, SearchResult } from "./types";
+import type {
+	ALL_SCOPE,
+	SearchResult,
+	ToolDefinitionLike,
+} from "./types";
 
 function formatSearchOutput<TScope extends string>(
 	query: string,
@@ -46,6 +50,12 @@ export function createStatusTool(input: {
 			return output;
 		},
 	});
+}
+
+export function asToolDefinitionLike(
+	toolDefinition: ToolDefinition,
+): ToolDefinitionLike {
+	return toolDefinition as unknown as ToolDefinitionLike;
 }
 
 export function createSearchTool<TIndex, TScope extends string>(input: {

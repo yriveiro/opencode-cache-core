@@ -48,3 +48,52 @@ export interface PermissionRequest {
 	title: string;
 	pattern?: string | string[];
 }
+
+export interface ClientLike {
+	app: {
+		log(input: unknown): Promise<unknown> | unknown;
+	};
+	session: {
+		prompt(input: unknown): Promise<unknown> | unknown;
+	};
+}
+
+export interface ToolContextLike {
+	sessionID: string;
+}
+
+export interface ToolDefinitionLike {
+	description: string;
+	args: Readonly<Record<string, object>>;
+	execute(
+		args: Record<string, unknown>,
+		context: ToolContextLike,
+	): Promise<string>;
+}
+
+export interface PermissionOutputLike {
+	status?: string;
+}
+
+export type PermissionAskLike = (
+	input: PermissionRequest,
+	output: PermissionOutputLike,
+) => Promise<void>;
+
+export interface HooksLike {
+	tool?: Record<string, ToolDefinitionLike>;
+	"permission.ask"?: PermissionAskLike;
+}
+
+export interface PluginInputLike {
+	client: ClientLike;
+	directory: string;
+	config?: unknown;
+	env?: unknown;
+	cwd?: unknown;
+}
+
+export type PluginLike = (
+	context: PluginInputLike,
+	options?: unknown,
+) => Promise<HooksLike>;

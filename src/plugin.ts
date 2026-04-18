@@ -1,12 +1,7 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
-import type {
-	Hooks,
-	Plugin,
-	PluginInput,
-	PluginOptions,
-} from "@opencode-ai/plugin";
+import type { Hooks, Plugin, PluginInput, PluginOptions } from "@opencode-ai/plugin";
 
 import { buildIndex } from "./indexing";
 import { createNotificationSender } from "./notifications";
@@ -18,10 +13,13 @@ import {
 	readFreshness,
 	writeIndex,
 } from "./storage";
-import { createSearchTool, createStatusTool } from "./tools";
+import { asToolDefinitionLike, createSearchTool, createStatusTool } from "./tools";
 import {
 	ALL_SCOPE,
+	type ClientLike,
+	type HooksLike,
 	type Index,
+	type PluginInputLike,
 	type SearchResult,
 	type SectionDefinition,
 } from "./types";
@@ -46,7 +44,7 @@ interface ResolvedPluginConfig {
 	searchToolName: string;
 }
 
-type PluginContext = PluginInput & {
+type PluginContext = PluginInputLike & {
 	config?: PluginOptions;
 	env?: unknown;
 	cwd?: unknown;
@@ -121,8 +119,9 @@ function readEnv(context: PluginContext): Record<string, string | undefined> {
 	}
 
 	for (const [key, value] of Object.entries(context.env)) {
-		if (typeof value === "string" || value === undefined) {
-			merged[key] = value;
+		const envValue = typeof value === "string" ? value : undefined;
+		if (envValue !== undefined || value === undefined) {
+			merged[key] = envValue;
 		}
 	}
 
@@ -319,12 +318,12 @@ function resolvePluginConfig(context: PluginContext): ResolvedPluginConfig {
 	};
 }
 
-function resolveClient(context: PluginContext): PluginInput["client"] {
+function resolveClient(context: PluginContext): ClientLike {
 	return context.client;
 }
 
 async function logInitialization(input: {
-	client: PluginInput["client"];
+	client: ClientLike;
 	service: string;
 	message: string;
 }): Promise<void> {
@@ -363,12 +362,12 @@ async function buildStatusOutput(
 }
 
 export function createPluginHooks(input: {
-	client: PluginInput["client"];
+	client: ClientLike;
 	service: string;
 	initMessage: string;
-	tools: NonNullable<Hooks["tool"]>;
-	permissionAsk?: NonNullable<Hooks["permission.ask"]>;
-}): Hooks {
+	tools: HooksLike["tool"];
+	permissionAsk?: HooksLike["permission.ask"];
+}): HooksLike {
 	void logInitialization({
 		client: input.client,
 		service: input.service,
@@ -407,14 +406,14 @@ const createPlugin: Plugin = async (
 	});
 	const scopes = Object.keys(config.sections);
 	const tools = {
-		[config.statusToolName]: createStatusTool({
+		[config.statusToolName]: asToolDefinitionLike(createStatusTool({
 			description:
 				"Report cache index readiness, freshness, and configured scopes.",
 			notificationTitle: "Cache status",
 			buildOutput: async () => buildStatusOutput(config, loadIndex),
 			sendNotification,
-		}),
-		[config.searchToolName]: createSearchTool<Index<string>, string>({
+		})),
+		[config.searchToolName]: asToolDefinitionLike(createSearchTool<Index<string>, string>({
 			description:
 				"Search the configured cache index by substring or regular expression.",
 			notificationTitle: "Cache search",
@@ -437,7 +436,7 @@ const createPlugin: Plugin = async (
 					limit,
 				}),
 			sendNotification,
-		}),
+		})),
 	};
 
 	return createPluginHooks({
@@ -446,7 +445,7 @@ const createPlugin: Plugin = async (
 		initMessage: `initialized cache plugin for ${config.cacheDir}`,
 		permissionAsk: createPermissionHandler(config.cacheDir),
 		tools,
-	});
+	}) as unknown as Hooks;
 };
 
 export default createPlugin;

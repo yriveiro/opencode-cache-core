@@ -1,6 +1,4 @@
-import type { Hooks } from "@opencode-ai/plugin";
-
-import type { PermissionRequest } from "./types";
+import type { PermissionAskLike, PermissionRequest } from "./types";
 
 function matchesPermission(
 	cacheDir: string,
@@ -24,10 +22,10 @@ function matchesPermission(
 
 export function createPermissionHandler(
 	cacheDir: string,
-): NonNullable<Hooks["permission.ask"]> {
+): PermissionAskLike {
 	return async (
-		input: Parameters<NonNullable<Hooks["permission.ask"]>>[0],
-		output: Parameters<NonNullable<Hooks["permission.ask"]>>[1],
+		input,
+		output,
 	): Promise<void> => {
 		if (
 			matchesPermission(cacheDir, {

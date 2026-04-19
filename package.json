@@ -12,6 +12,17 @@
     }
   },
   "opencodePlugin": true,
+  "description": "OpenCode plugin for cache and search via DevDocs",
+  "author": "yriveiro",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yriveiro/opencode-cache-core.git"
+  },
+  "homepage": "https://github.com/yriveiro/opencode-cache-core#readme",
+  "bugs": {
+    "url": "https://github.com/yriveiro/opencode-cache-core/issues"
+  },
   "keywords": [
     "opencode-plugin",
     "cache",
@@ -22,7 +33,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@opencode-ai/plugin": "*"
+    "@opencode-ai/plugin": "^1.3.17"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun",
@@ -36,11 +47,11 @@
     "check": "biome check ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
-    "@tailwindcss/cli": "^4.1.3",
-    "@types/node": "^22.14.1",
-    "bun-types": "^1.3.11",
-    "tailwindcss": "^4.1.3",
-    "typescript": "^5.8.3"
+    "@biomejs/biome": "^2.4.12",
+    "@tailwindcss/cli": "^4.2.2",
+    "@types/node": "^22.19.17",
+    "bun-types": "^1.3.12",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.9.3"
   }
 }

@@ -5,17 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-    <title>opencode-cache-core plugin docs</title>
-    <meta name="description" content="Documentation for the opencode-cache-core OpenCode plugin: overview, architecture, configuration, tool behavior, and code walkthrough.">
+    <title>opencode-cache-core docs</title>
+    <meta name="description" content="Documentation for the Git-first opencode-cache-core package: overview, architecture, Git cache spec, runtime behavior, and code walkthrough.">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
     <style>
-/* ============================================
-   CSS Custom Properties (Design Tokens)
-   ============================================ */
 :root {
-  /* Color palette - Dark theme (default) */
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
   --bg-code: #1c2128;
@@ -25,47 +21,27 @@
   --accent: #58a6ff;
   --accent-hover: #79b8ff;
   --border: #30363d;
-
-  /* Syntax highlighting */
-  --code-keyword: #ff7b72;
-  --code-string: #a5d6ff;
-  --code-type: #7ee787;
-  --code-comment: #8b949e;
-  --code-function: #d2a8ff;
-  --code-number: #79c0ff;
-
-  /* Spacing scale using fluid values */
   --space-xs: clamp(0.25rem, 0.5vw, 0.5rem);
   --space-sm: clamp(0.5rem, 1vw, 0.75rem);
   --space-md: clamp(1rem, 2vw, 1.5rem);
   --space-lg: clamp(1.5rem, 3vw, 2rem);
   --space-xl: clamp(2rem, 4vw, 3rem);
-
-  /* Typography scale using fluid values */
   --font-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
   --font-sm: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem);
   --font-base: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
   --font-md: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
   --font-lg: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
   --font-xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
-
-  /* Font families */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Consolas', 'Monaco', monospace;
-
-  /* Animation */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Fira Mono", "Consolas", "Monaco", monospace;
   --transition-fast: 150ms ease;
-  --transition-base: 200ms ease;
   --transition-slow: 300ms ease;
-
-  /* Layout */
   --header-height: clamp(56px, 8vh, 72px);
   --nav-height: clamp(44px, 6vh, 56px);
   --content-max-width: 1600px;
   --touch-target-min: 44px;
 }
 
-/* Light theme */
 [data-theme="light"] {
   --bg-primary: #ffffff;
   --bg-secondary: #f6f8fa;
@@ -76,20 +52,9 @@
   --accent: #0969da;
   --accent-hover: #0550ae;
   --border: #d0d7de;
-  --code-keyword: #cf222e;
-  --code-string: #0a3069;
-  --code-type: #116329;
-  --code-comment: #6e7781;
-  --code-function: #8250df;
-  --code-number: #0550ae;
 }
 
-/* ============================================
-   Base Reset & Global Styles
-   ============================================ */
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -101,15 +66,6 @@ html {
   text-size-adjust: 100%;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: 0.01ms;
-    animation-iteration-count: 1;
-    transition-duration: 0.01ms;
-  }
-}
-
 body {
   font-family: var(--font-sans);
   background: var(--bg-primary);
@@ -118,9 +74,10 @@ body {
   min-height: 100dvh;
 }
 
-/* ============================================
-   Skip Link (Accessibility)
-   ============================================ */
+a {
+  color: var(--accent);
+}
+
 .skip-link {
   position: absolute;
   top: -100%;
@@ -136,11 +93,12 @@ body {
   transition: top var(--transition-fast);
 }
 
-.skip-link:focus { top: 0; outline: 3px solid var(--accent-hover); outline-offset: 2px; }
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid var(--accent-hover);
+  outline-offset: 2px;
+}
 
-/* ============================================
-   Header
-   ============================================ */
 header {
   position: sticky;
   top: 0;
@@ -161,7 +119,9 @@ header h1 {
   font-weight: 600;
 }
 
-header h1 span { color: var(--accent); }
+header h1 span {
+  color: var(--accent);
+}
 
 .header-controls {
   display: flex;
@@ -169,9 +129,6 @@ header h1 span { color: var(--accent); }
   gap: var(--space-sm);
 }
 
-/* ============================================
-   Theme Toggle & GitHub Link
-   ============================================ */
 .theme-toggle,
 .github-link {
   display: flex;
@@ -186,9 +143,7 @@ header h1 span { color: var(--accent); }
   color: var(--text-secondary);
   cursor: pointer;
   text-decoration: none;
-  transition: color var(--transition-fast),
-              border-color var(--transition-fast),
-              background var(--transition-fast);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
 .theme-toggle:hover,
@@ -198,22 +153,32 @@ header h1 span { color: var(--accent); }
 }
 
 .theme-toggle:focus-visible,
-.github-link:focus-visible {
+.github-link:focus-visible,
+.mobile-menu-btn:focus-visible,
+nav a:focus-visible,
+.collapse-btn:focus-visible,
+.copy-btn:focus-visible,
+.float-nav-btn:focus-visible,
+.back-to-top:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .theme-toggle svg,
-.github-link svg { width: 20px; height: 20px; flex-shrink: 0; }
+.github-link svg,
+.mobile-menu-btn svg,
+.float-nav-btn svg,
+.back-to-top svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
 
 .theme-toggle .sun-icon { display: none; }
 .theme-toggle .moon-icon { display: block; }
 [data-theme="light"] .theme-toggle .sun-icon { display: block; }
 [data-theme="light"] .theme-toggle .moon-icon { display: none; }
 
-/* ============================================
-   CSS-Only Mobile Menu
-   ============================================ */
 .mobile-menu-checkbox {
   position: absolute;
   opacity: 0;
@@ -232,18 +197,16 @@ header h1 span { color: var(--accent); }
   border-radius: 6px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.mobile-menu-btn:hover { color: var(--accent); border-color: var(--accent); }
-.mobile-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.mobile-menu-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.mobile-menu-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .mobile-menu-btn .close-icon { display: none; }
 .mobile-menu-btn .menu-icon { display: block; }
 
-/* ============================================
-   Navigation
-   ============================================ */
 nav {
   display: flex;
   flex-wrap: wrap;
@@ -265,22 +228,18 @@ nav a {
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-nav a:hover { color: var(--accent); background: rgba(88, 166, 255, 0.1); }
-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-nav a.active { color: var(--accent); background: rgba(88, 166, 255, 0.15); }
+nav a:hover,
+nav a.active {
+  color: var(--accent);
+  background: rgba(88, 166, 255, 0.15);
+}
 
-/* ============================================
-   Main Content
-   ============================================ */
 main {
   max-width: var(--content-max-width);
   margin-inline: auto;
   padding: var(--space-lg);
 }
 
-/* ============================================
-   Sections
-   ============================================ */
 section {
   margin-block-end: var(--space-xl);
   scroll-margin-block-start: calc(var(--header-height) + var(--nav-height) + var(--space-md));
@@ -292,9 +251,6 @@ section h3 {
   margin-block: var(--space-md) var(--space-sm);
 }
 
-/* ============================================
-   Collapsible Section Header
-   ============================================ */
 .section-header {
   display: flex;
   align-items: center;
@@ -307,11 +263,15 @@ section h3 {
   font-size: var(--font-lg);
   cursor: pointer;
   user-select: none;
-  transition: color var(--transition-fast);
 }
 
-.section-header:hover { color: var(--accent); }
-.section-header span { flex: 1; }
+.section-header:hover {
+  color: var(--accent);
+}
+
+.section-header span {
+  flex: 1;
+}
 
 .collapse-btn {
   display: flex;
@@ -328,9 +288,14 @@ section h3 {
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.collapse-btn:hover { color: var(--accent); background: rgba(88, 166, 255, 0.1); }
-.collapse-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.collapse-btn svg { width: 20px; height: 20px; transition: transform var(--transition-slow); }
+.collapse-btn:hover {
+  color: var(--accent);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.collapse-btn svg {
+  transition: transform var(--transition-slow);
+}
 
 .section-content {
   overflow: hidden;
@@ -339,13 +304,20 @@ section h3 {
   opacity: 1;
 }
 
-section.collapsed .section-content { max-height: 0; opacity: 0; }
-section.collapsed .collapse-btn svg { transform: rotate(-90deg); }
-section.collapsed .section-header { margin-block-end: 0; border-block-end-color: transparent; }
+section.collapsed .section-content {
+  max-height: 0;
+  opacity: 0;
+}
 
-/* ============================================
-   Two-Column Documentation Layout
-   ============================================ */
+section.collapsed .collapse-btn svg {
+  transform: rotate(-90deg);
+}
+
+section.collapsed .section-header {
+  margin-block-end: 0;
+  border-block-end-color: transparent;
+}
+
 .doc-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -354,9 +326,6 @@ section.collapsed .section-header { margin-block-end: 0; border-block-end-color:
   align-items: start;
 }
 
-/* ============================================
-   Documentation Content Column
-   ============================================ */
 .doc-content {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -364,55 +333,21 @@ section.collapsed .section-header { margin-block-end: 0; border-block-end-color:
   padding: var(--space-md);
 }
 
-.doc-content h4 {
-  color: var(--accent);
-  font-size: var(--font-base);
-  font-family: var(--font-mono);
+.doc-content p {
+  color: var(--text-primary);
   margin-block-end: var(--space-sm);
 }
 
-.doc-content p { color: var(--text-primary); margin-block-end: var(--space-sm); }
-.doc-content ul { margin-inline-start: var(--space-md); margin-block-end: var(--space-sm); }
-.doc-content li { color: var(--text-secondary); margin-block-end: var(--space-xs); }
+.doc-content ul {
+  margin-inline-start: var(--space-md);
+  margin-block-end: var(--space-sm);
+}
 
-.doc-content .param {
-  background: var(--bg-code);
-  padding: var(--space-sm);
-  border-radius: 6px;
+.doc-content li {
+  color: var(--text-secondary);
   margin-block-end: var(--space-xs);
 }
 
-.doc-content .param-name { color: var(--code-function); font-family: var(--font-mono); font-size: var(--font-sm); }
-.doc-content .param-type { color: var(--code-type); font-family: var(--font-mono); font-size: var(--font-sm); margin-inline-start: var(--space-xs); }
-.doc-content .param-desc { color: var(--text-secondary); font-size: var(--font-sm); margin-block-start: var(--space-xs); }
-
-/* ============================================
-   Tags
-   ============================================ */
-.tag {
-  display: inline-block;
-  padding: 0.125rem var(--space-sm);
-  border-radius: 4px;
-  font-size: var(--font-xs);
-  font-weight: 500;
-  margin-inline-end: var(--space-xs);
-  margin-block-end: var(--space-xs);
-  text-decoration: none;
-  transition: filter var(--transition-fast);
-}
-
-a.tag:hover { filter: brightness(1.2); text-decoration: underline; }
-a.tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.tag-protocol { background: rgba(126, 231, 135, 0.15); color: var(--code-type); }
-.tag-struct   { background: rgba(210, 168, 255, 0.15); color: var(--code-function); }
-.tag-enum     { background: rgba(255, 123, 114, 0.15); color: var(--code-keyword); }
-.tag-throws   { background: rgba(255, 166, 87, 0.15);  color: #ffa657; }
-.tag-sendable { background: rgba(126, 231, 135, 0.15); color: var(--code-type); }
-
-/* ============================================
-   Code Content Column
-   ============================================ */
 .code-content {
   position: relative;
   background: var(--bg-code);
@@ -420,7 +355,6 @@ a.tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   border-radius: 8px;
   overflow: hidden;
   container-type: inline-size;
-  container-name: code-block;
 }
 
 .code-header {
@@ -433,8 +367,12 @@ a.tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   border-block-end: 1px solid var(--border);
 }
 
-.code-header .filename { color: var(--text-secondary); font-family: var(--font-mono); font-size: var(--font-xs); }
-.code-header .lines    { color: var(--text-secondary); font-size: var(--font-xs); }
+.code-header .filename,
+.code-header .lines {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+}
 
 pre {
   padding: var(--space-sm);
@@ -447,52 +385,21 @@ pre {
 
 code { font-family: inherit; }
 
-@container code-block (max-width: 400px) {
-  pre { font-size: 0.7rem; padding: var(--space-xs); }
-  .code-header { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
-}
-
-/* ============================================
-   Syntax Highlighting
-   ============================================ */
-
-/* highlight.js integration — keep our container background, strip hljs chrome */
 .hljs {
   background: transparent;
   padding: 0;
   color: inherit;
 }
 
-.keyword  { color: var(--code-keyword); }
-.type     { color: var(--code-type); }
-.string   { color: var(--code-string); }
-.comment  { color: var(--code-comment); font-style: italic; }
-.function { color: var(--code-function); }
-.number   { color: var(--code-number); }
-.property { color: var(--code-number); }
-
-.shell-command { color: var(--code-function); }
-.shell-flag    { color: var(--code-keyword); }
-.shell-arg     { color: var(--code-string); }
-.shell-pipe    { color: var(--code-keyword); font-weight: bold; }
-.shell-url     { color: var(--code-number); text-decoration: underline; }
-
-/* ============================================
-   Inline Code
-   ============================================ */
-.inline-code,
 code:not(pre code) {
   background: var(--bg-code);
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 0.875em;
-  color: var(--code-function);
+  color: var(--accent);
 }
 
-/* ============================================
-   Intro / Overview Section
-   ============================================ */
 .intro {
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-code) 100%);
   border: 1px solid var(--border);
@@ -501,29 +408,19 @@ code:not(pre code) {
   margin-block-end: var(--space-lg);
 }
 
-.intro h2 { border: none; padding: 0; margin-block-end: var(--space-sm); color: var(--text-heading); font-size: var(--font-xl); }
-.intro p   { color: var(--text-secondary); font-size: var(--font-md); }
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-  gap: var(--space-sm);
-  margin-block-start: var(--space-md);
+.intro h2 {
+  border: none;
+  padding: 0;
+  margin-block-end: var(--space-sm);
+  color: var(--text-heading);
+  font-size: var(--font-xl);
 }
 
-.feature {
-  background: var(--bg-primary);
-  padding: var(--space-sm);
-  border-radius: 8px;
-  border: 1px solid var(--border);
+.intro p {
+  color: var(--text-secondary);
+  font-size: var(--font-md);
 }
 
-.feature h4 { color: var(--accent); font-size: var(--font-sm); margin-block-end: var(--space-xs); }
-.feature p  { color: var(--text-secondary); font-size: var(--font-sm); }
-
-/* ============================================
-   Card Grid
-   ============================================ */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
@@ -538,12 +435,19 @@ code:not(pre code) {
   padding: var(--space-md);
 }
 
-.card h3 { color: var(--accent); font-size: var(--font-base); font-family: var(--font-mono); margin-block-end: var(--space-sm); }
-.card p  { color: var(--text-secondary); font-size: var(--font-sm); line-height: 1.7; }
+.card h3 {
+  color: var(--accent);
+  font-size: var(--font-base);
+  font-family: var(--font-mono);
+  margin-block-end: var(--space-sm);
+}
 
-/* ============================================
-   Table
-   ============================================ */
+.card p {
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.7;
+}
+
 .doc-table {
   width: 100%;
   border-collapse: collapse;
@@ -570,12 +474,14 @@ code:not(pre code) {
   vertical-align: top;
 }
 
-.doc-table tr:last-child td { border-block-end: none; }
-.doc-table tr:hover td { background: var(--bg-secondary); }
+.doc-table tr:last-child td {
+  border-block-end: none;
+}
 
-/* ============================================
-   Callout
-   ============================================ */
+.doc-table tr:hover td {
+  background: var(--bg-secondary);
+}
+
 .callout {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -585,12 +491,17 @@ code:not(pre code) {
   margin-block-end: var(--space-md);
 }
 
-.callout h3 { color: var(--accent); font-size: var(--font-base); margin-block-end: var(--space-sm); }
-.callout p  { color: var(--text-secondary); font-size: var(--font-sm); }
+.callout h3 {
+  color: var(--accent);
+  font-size: var(--font-base);
+  margin-block-end: var(--space-sm);
+}
 
-/* ============================================
-   Architecture Diagram
-   ============================================ */
+.callout p {
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+
 .architecture {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -598,7 +509,6 @@ code:not(pre code) {
   padding: var(--space-lg);
   margin-block-end: var(--space-lg);
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .architecture pre.mermaid {
@@ -608,11 +518,11 @@ code:not(pre code) {
   padding: var(--space-sm) 0;
 }
 
-.architecture .mermaid svg { max-width: 100%; height: auto; }
+.architecture .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
 
-/* ============================================
-   Copy Button
-   ============================================ */
 .copy-btn {
   position: absolute;
   top: calc(var(--space-lg) + var(--space-md) + var(--space-xs));
@@ -630,212 +540,29 @@ code:not(pre code) {
   cursor: pointer;
   z-index: 10;
   opacity: 0;
-  transition: opacity var(--transition-fast),
-              background var(--transition-fast),
-              color var(--transition-fast),
-              border-color var(--transition-fast);
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .code-content:hover .copy-btn,
-.copy-btn:focus-visible { opacity: 1; }
+.copy-btn:focus-visible {
+  opacity: 1;
+}
 
-.copy-btn:hover { background: var(--bg-code); color: var(--accent); border-color: var(--accent); }
-.copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.copy-btn.copied { color: var(--code-type); border-color: var(--code-type); }
-.copy-btn svg { width: 16px; height: 16px; }
+.copy-btn:hover {
+  background: var(--bg-code);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.copy-btn.copied {
+  color: #3fb950;
+  border-color: #3fb950;
+}
+
 .copy-btn .check-icon { display: none; }
 .copy-btn.copied .copy-icon { display: none; }
 .copy-btn.copied .check-icon { display: block; }
 
-/* ============================================
-   Floating Navigation Widget
-   ============================================ */
-.float-nav {
-  position: fixed;
-  inset-inline-start: var(--space-md);
-  inset-block-end: var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  z-index: 1000;
-}
-
-.float-nav-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--touch-target-min);
-  height: var(--touch-target-min);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: background var(--transition-fast),
-              color var(--transition-fast),
-              border-color var(--transition-fast),
-              transform var(--transition-fast);
-  position: relative;
-}
-
-.float-nav-btn:hover {
-  background: var(--bg-code);
-  color: var(--accent);
-  border-color: var(--accent);
-  transform: translateX(4px);
-}
-
-.float-nav-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.float-nav-btn.active { background: rgba(88, 166, 255, 0.15); color: var(--accent); border-color: var(--accent); }
-.float-nav-btn svg { width: 20px; height: 20px; }
-
-/* Tooltip */
-.float-nav-btn::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  inset-inline-start: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--font-xs);
-  font-weight: 500;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-fast), visibility var(--transition-fast);
-  pointer-events: none;
-}
-
-.float-nav-btn::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: calc(100% + 4px);
-  top: 50%;
-  transform: translateY(-50%);
-  border: 6px solid transparent;
-  border-inline-end-color: var(--border);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-fast), visibility var(--transition-fast);
-  pointer-events: none;
-}
-
-.float-nav-btn:hover::after,
-.float-nav-btn:hover::before,
-.float-nav-btn:focus-visible::after,
-.float-nav-btn:focus-visible::before {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* ============================================
-   Back to Top Button
-   ============================================ */
-.back-to-top {
-  position: fixed;
-  inset-inline-end: var(--space-md);
-  inset-block-end: var(--space-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--touch-target-min);
-  height: var(--touch-target-min);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transition: background var(--transition-fast),
-              color var(--transition-fast),
-              border-color var(--transition-fast),
-              transform var(--transition-fast),
-              opacity var(--transition-fast),
-              visibility var(--transition-fast);
-}
-
-.back-to-top.visible { opacity: 1; visibility: visible; }
-
-.back-to-top:hover {
-  background: var(--bg-code);
-  color: var(--accent);
-  border-color: var(--accent);
-  transform: translateX(-4px);
-}
-
-.back-to-top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.back-to-top svg { width: 20px; height: 20px; }
-
-.back-to-top::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  inset-inline-end: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: var(--font-xs);
-  font-weight: 500;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-fast), visibility var(--transition-fast);
-  pointer-events: none;
-}
-
-.back-to-top::before {
-  content: '';
-  position: absolute;
-  inset-inline-end: calc(100% + 4px);
-  top: 50%;
-  transform: translateY(-50%);
-  border: 6px solid transparent;
-  border-inline-start-color: var(--border);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-fast), visibility var(--transition-fast);
-  pointer-events: none;
-}
-
-.back-to-top:hover::after,
-.back-to-top:hover::before,
-.back-to-top:focus-visible::after,
-.back-to-top:focus-visible::before {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* ============================================
-   Footer
-   ============================================ */
-footer {
-  margin-block-start: var(--space-xl);
-  padding: var(--space-lg);
-  background: var(--bg-secondary);
-  border-block-start: 1px solid var(--border);
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
-}
-
-footer a { color: var(--accent); text-decoration: none; transition: color var(--transition-fast); }
-footer a:hover { text-decoration: underline; }
-footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* ============================================
-   Page separators between doc "pages"
-   ============================================ */
 .page-section {
   padding-block-start: var(--space-xl);
   border-block-start: 2px solid var(--border);
@@ -849,21 +576,136 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
   margin-block-start: 0;
 }
 
-/* ============================================
-   Responsive - Tablet (max-width: 1024px)
-   ============================================ */
-@media (max-width: 1024px) {
-  .doc-row { grid-template-columns: 1fr; }
+.float-nav {
+  position: fixed;
+  inset-inline-start: var(--space-md);
+  inset-block-end: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  z-index: 1000;
 }
 
-/* ============================================
-   Responsive - Mobile (max-width: 768px)
-   ============================================ */
-@media (max-width: 768px) {
-  header { padding-inline: var(--space-sm); min-height: auto; padding-block: var(--space-sm); }
-  header h1 { font-size: var(--font-md); }
+.float-nav-btn,
+.back-to-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast), visibility var(--transition-fast);
+  position: relative;
+}
 
-  .mobile-menu-btn { display: flex; }
+.float-nav-btn:hover,
+.back-to-top:hover {
+  background: var(--bg-code);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.float-nav-btn.active {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.float-nav-btn::after,
+.back-to-top::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  white-space: nowrap;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-xs);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  pointer-events: none;
+}
+
+.float-nav-btn::after {
+  inset-inline-start: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.back-to-top::after {
+  inset-inline-end: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.float-nav-btn:hover::after,
+.float-nav-btn:focus-visible::after,
+.back-to-top:hover::after,
+.back-to-top:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.back-to-top {
+  position: fixed;
+  inset-inline-end: var(--space-md);
+  inset-block-end: var(--space-md);
+  cursor: pointer;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+footer {
+  margin-block-start: var(--space-xl);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-block-start: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1024px) {
+  .doc-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  header {
+    padding-inline: var(--space-sm);
+    min-height: auto;
+    padding-block: var(--space-sm);
+  }
+
+  header h1 {
+    font-size: var(--font-md);
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
 
   nav {
     position: absolute;
@@ -875,67 +717,64 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
     display: none;
   }
 
-  nav a { padding: var(--space-sm); }
+  nav a {
+    padding: var(--space-sm);
+  }
 
-  #mobile-menu-toggle:checked + nav { display: flex; }
+  #mobile-menu-toggle:checked + nav {
+    display: flex;
+  }
 
-  body:has(#mobile-menu-toggle:checked) .mobile-menu-btn .menu-icon  { display: none; }
+  body:has(#mobile-menu-toggle:checked) .mobile-menu-btn .menu-icon { display: none; }
   body:has(#mobile-menu-toggle:checked) .mobile-menu-btn .close-icon { display: block; }
 
-  main { padding: var(--space-sm); }
-  .intro, .architecture { padding: var(--space-md); }
+  main {
+    padding: var(--space-sm);
+  }
 
-  .float-nav { inset-inline-start: var(--space-sm); inset-block-end: var(--space-sm); }
-  .float-nav-btn { width: 40px; height: 40px; }
-  .float-nav-btn svg { width: 18px; height: 18px; }
-  .float-nav-btn::after, .float-nav-btn::before { display: none; }
+  .intro,
+  .architecture {
+    padding: var(--space-md);
+  }
 
-  .back-to-top { inset-inline-end: var(--space-sm); inset-block-end: var(--space-sm); width: 40px; height: 40px; }
-  .back-to-top svg { width: 18px; height: 18px; }
-  .back-to-top::after, .back-to-top::before { display: none; }
+  .float-nav,
+  .back-to-top {
+    inset-block-end: var(--space-sm);
+  }
+
+  .float-nav {
+    inset-inline-start: var(--space-sm);
+  }
+
+  .back-to-top {
+    inset-inline-end: var(--space-sm);
+  }
+
+  .float-nav-btn::after,
+  .back-to-top::after {
+    display: none;
+  }
 }
 
-/* ============================================
-   Responsive - Small Mobile (max-width: 480px)
-   ============================================ */
 @media (max-width: 480px) {
-  :root { --space-md: 0.75rem; --space-lg: 1rem; }
-  .features { grid-template-columns: 1fr; }
-  .doc-content { padding: var(--space-sm); }
-  .code-header { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
-  pre { font-size: 0.7rem; }
-  .float-nav { display: none; }
-}
+  :root {
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+  }
 
-/* ============================================
-   Landscape Mobile
-   ============================================ */
-@media (max-width: 896px) and (orientation: landscape) {
-  header { position: relative; }
-  .float-nav { flex-direction: row; inset-block-end: var(--space-xs); inset-inline-start: 50%; transform: translateX(-50%); }
-}
+  .code-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
 
-/* ============================================
-   High Contrast
-   ============================================ */
-@media (prefers-contrast: high) {
-  :root { --border: #ffffff; --text-secondary: var(--text-primary); }
-  [data-theme="light"] { --border: #000000; }
-  .tag, nav a, .float-nav-btn, .back-to-top { border: 2px solid currentColor; }
-}
+  pre {
+    font-size: 0.7rem;
+  }
 
-/* ============================================
-   Print
-   ============================================ */
-@media print {
-  header, nav, .float-nav, .back-to-top, .theme-toggle,
-  .mobile-menu-btn, .mobile-menu-checkbox, .collapse-btn, .copy-btn { display: none; }
-  main { max-width: none; padding: 0; }
-  section { break-inside: avoid; }
-  section.collapsed .section-content { max-height: none; opacity: 1; }
-  .doc-row { grid-template-columns: 1fr; }
-  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.8em; }
-  a { text-decoration: underline; }
+  .float-nav {
+    display: none;
+  }
 }
     </style>
   </head>
@@ -943,7 +782,7 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <header role="banner">
-      <h1><span>opencode-cache-core</span> plugin docs</h1>
+      <h1><span>opencode-cache-core</span> docs</h1>
       <div class="header-controls">
         <button class="theme-toggle" aria-label="Toggle theme" type="button">
           <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -963,7 +802,7 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
         </button>
         <a href="https://github.com/yriveiro/opencode-cache-core" target="_blank" rel="noopener noreferrer" class="github-link" aria-label="View on GitHub">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
           </svg>
         </a>
         <label for="mobile-menu-toggle" class="mobile-menu-btn" aria-label="Toggle navigation menu">
@@ -980,7 +819,7 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
       </div>
     </header>
 
-    <input type="checkbox" id="mobile-menu-toggle" class="mobile-menu-checkbox" aria-hidden="true"/>
+    <input type="checkbox" id="mobile-menu-toggle" class="mobile-menu-checkbox" aria-hidden="true">
 
     <nav aria-label="Documentation navigation">
       <a href="#overview">Overview</a>
@@ -992,15 +831,11 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
     <main id="main-content" role="main">
 
-      <!-- ======================================================
-           OVERVIEW
-           ====================================================== -->
       <div id="overview" class="page-section">
-
         <section id="overview-intro">
           <div class="intro">
-            <h2>Plugin overview</h2>
-            <p>The plugin wraps cache indexing and search into a small OpenCode-compatible package with explicit configuration resolution, runtime notifications, and a compatibility permission hook.</p>
+            <h2>Package overview</h2>
+            <p>This package is for OpenCode plugins that keep a local cache of external projects as Git checkouts, optionally build derived artifacts from those checkouts, and search that cache locally through generated tools.</p>
           </div>
         </section>
 
@@ -1008,28 +843,26 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
           <h2 class="section-header">
             <span>What ships today</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="card-grid">
               <article class="card">
-                <h3>cache_status</h3>
-                <p>Reports readiness, freshness, configured scopes, and indexed file counts when the index can be loaded.</p>
+                <h3>Cache spec</h3>
+                <p>A downstream plugin defines sources, optional artifacts, and named search sections in one validated spec.</p>
               </article>
               <article class="card">
-                <h3>cache_search</h3>
-                <p>Searches the cache index by substring or regular expression, supports scope filtering, and returns excerpts with file and line numbers.</p>
+                <h3>Generated tools</h3>
+                <p>The package wires update, status, and search tools from that spec and exposes them as an OpenCode plugin.</p>
               </article>
               <article class="card">
-                <h3>permission.ask</h3>
-                <p>Auto-allows directory access requests when the host is asking about the configured cache directory through the compatibility hook.</p>
+                <h3>Persisted state</h3>
+                <p>The runtime writes <code>cache-state.json</code> and <code>search-index.json</code> into the resolved cache directory.</p>
               </article>
               <article class="card">
-                <h3>Source-driven docs</h3>
-                <p>This docs site pairs narrative with excerpts from the files in <code>src/</code> so explanations follow the implementation.</p>
+                <h3>Runtime context</h3>
+                <p>Downstream plugins get helpers for state, index refresh, path resolution, notifications, and subprocess execution.</p>
               </article>
             </div>
           </div>
@@ -1037,136 +870,90 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
         <section id="request-flow-at-a-glance">
           <h2 class="section-header">
-            <span>Request flow at a glance</span>
+            <span>Plugin flow at a glance</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="architecture">
               <pre class="mermaid">flowchart TD
-    Host[OpenCode host] --> Plugin[default plugin export]
-    Plugin --> Config[resolvePluginConfig]
-    Plugin --> Loader[createIndexLoader]
-    Plugin --> Notify[createNotificationSender]
-    Plugin --> Permission[createPermissionHandler]
-    Plugin --> Tools[createStatusTool and createSearchTool]
-    Tools --> Status[cache_status]
-    Tools --> Search[cache_search]
-    Status --> State[pathExists and readFreshness]
-    Status --> LoadIndex[loadIndex]
-    Search --> LoadIndex
-    Search --> Runtime[searchIndex]
-    Status --> Session[session.prompt notification]
-    Search --> Session</pre>
+    PluginAuthor[downstream plugin] --> Spec[defineGitCacheSpec]
+    Spec --> Plugin[createGitCachePlugin]
+    Plugin --> Runtime[createRuntimeContext]
+    Runtime --> Update[update tool]
+    Runtime --> Status[status tool]
+    Runtime --> SearchTool[search tool]
+    Runtime --> Extra[extraTools runtime helpers]
+    Update --> Git[sync Git sources]
+    Update --> State[write cache-state.json]
+    Update --> Index[write search-index.json]
+    SearchTool --> Load[runtime.loadIndex]
+    Load --> Search[searchIndex]</pre>
             </div>
           </div>
         </section>
 
         <section id="how-the-package-is-assembled">
           <h2 class="section-header">
-            <span>How the package is assembled</span>
+            <span>What a plugin author imports</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The default export resolves configuration, builds notification helpers, loads or creates the cache index, then exposes two tools plus the compatibility hook <code>permission.ask</code>.</p>
-                <p><code>src/index.ts</code> is the public entrypoint that re-exports the package surface, while the actual plugin assembly lives in <code>src/plugin.ts</code>.</p>
-                <ul style="margin-inline-start:var(--space-md);margin-block-end:var(--space-sm);color:var(--text-secondary);">
-                  <li style="margin-block-end:var(--space-xs);">The default export resolves configuration from plugin options, environment aliases, and built-in defaults before any tool is created.</li>
-                  <li style="margin-block-end:var(--space-xs);">Index loading stays lazy through <code>createIndexLoader()</code>, so tools can reuse a persisted JSON index when it already exists.</li>
-                  <li style="margin-block-end:var(--space-xs);">The assembled hooks expose two tools plus the narrow <code>permission.ask</code> compatibility handler.</li>
+                <p><code>src/index.ts</code> is the package entrypoint. A downstream plugin usually imports <code>defineGitCacheSpec()</code> and <code>createGitCachePlugin()</code>, then optionally uses lower-level helpers for custom status lines or package-specific tools.</p>
+                <p>The runtime implementation lives in <code>src/git-cache-plugin.ts</code>, while the rest of the package is split into spec, state, path, search, and notification helpers.</p>
+                <ul>
+                  <li>Use <code>defineGitCacheSpec()</code> to validate the cache contract.</li>
+                  <li>Use <code>createGitCachePlugin()</code> to publish the generated OpenCode plugin.</li>
+                  <li>Use the runtime context from <code>extraTools(runtime)</code> when a plugin needs build steps or package-specific commands.</li>
                 </ul>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">src/plugin.ts</span>
-                    <span class="lines">Lines 314–372</span>
+                    <span class="filename">src/index.ts</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">314 const createPlugin: Plugin = async (
-315   context: PluginInput,
-316   options?: PluginOptions,
-317 ): Promise&lt;Hooks&gt; =&gt; {
-318   const pluginContext: PluginContext = {
-319     ...context,
-320     config: options,
-321   };
-322   const config = resolvePluginConfig(pluginContext);
-323   const client = resolveClient(pluginContext);
-324   const sendNotification = createNotificationSender({
-325     client,
-326     service: "opencode-cache-core-plugin",
-327   });
-328   const loadIndex = createIndexLoader&lt;Index&lt;string&gt;&gt;({
-329     indexFile: config.indexFile,
-330     readyPath: config.readyPath,
-331     createIndex: async () =&gt;
-332       buildIndex({
-333         cacheDir: config.cacheDir,
-334         sections: config.sections,
-335       }),
-336     persistIndex: async (index) =&gt; writeIndex(config.indexFile, index),
-337   });
-338   const scopes = Object.keys(config.sections);
-339   const tools = {
-340     [config.statusToolName]: createStatusTool({
-341       description: "Report cache index readiness, freshness, and configured scopes.",
-342       notificationTitle: "Cache status",
-343       buildOutput: async () =&gt; buildStatusOutput(config, loadIndex),
-344       sendNotification,
-345     }),
-346     [config.searchToolName]: createSearchTool&lt;Index&lt;string&gt;, string&gt;({
-347       description: "Search the configured cache index by substring or regular expression.",
-348       notificationTitle: "Cache search",
-349       missingOutput: "Cache index is unavailable. Confirm the ready marker path or build the cache index.",
-350       scopeValues: buildScopeValues(scopes),
-351       loadIndex,
-352       search: async ({ index, query, scope, regex, caseSensitive, limit }): Promise&lt;SearchResult&lt;string&gt;&gt; =&gt;
-353         searchIndex(index, query, {
-354           scope,
-355           regex,
-356           caseSensitive,
-357           limit,
-358         }),
-359       sendNotification,
-360     }),
-361   };
-362 
-363   return createPluginHooks({
-364     client,
-365     service: "opencode-cache-core-plugin",
-366     initMessage: `initialized cache plugin for ${config.cacheDir}`,
-367     permissionAsk: createPermissionHandler(config.cacheDir),
-368     tools,
-369   });
-370 };
-371 
-372 export default createPlugin;</code></pre>
+                  <pre><code class="language-ts">export {
+  ALL_SCOPE,
+  type Index,
+  type PermissionRequest,
+  type SearchHit,
+  type SearchOptions,
+  type SearchResult,
+  type Section,
+  type SectionDefinition,
+} from "./types";
+export { buildIndex } from "./indexing";
+export { pathExists, readIndex, writeIndex } from "./storage";
+export { searchIndex } from "./search";
+export {
+  type CommandResult,
+  DEFAULT_GIT_CACHE_MAX_AGE_SECONDS,
+  buildGitCacheSearchIndex,
+  createGitCachePlugin,
+  formatCommandFailure,
+  formatGitCacheIndexCounts,
+  searchGitCacheIndex,
+  type GitCachePluginOptions,
+  type GitCacheRuntimeContext,
+} from "./git-cache-plugin";</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
+      </div>
 
-      </div><!-- end #overview -->
-
-      <!-- ======================================================
-           ARCHITECTURE
-           ====================================================== -->
       <div id="architecture" class="page-section">
-
         <section id="architecture-intro">
           <div class="intro">
-            <h2>Architecture and feature map</h2>
-            <p>The repository is intentionally split into small files so each stage of cache handling stays independently understandable.</p>
+            <h2>Architecture and runtime layout</h2>
+            <p>The package is organized around the data a cache plugin needs: the validated spec, the resolved on-disk layout, the persisted state file, the persisted index file, and the generated tool surface.</p>
           </div>
         </section>
 
@@ -1174,9 +961,7 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
           <h2 class="section-header">
             <span>Module responsibilities</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
@@ -1184,214 +969,242 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
               <table class="doc-table">
                 <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
                 <tbody>
-                  <tr><td><code>src/index.ts</code></td><td>Public entrypoint that re-exports the package API, helper functions, types, and the default plugin export from <code>src/plugin.ts</code>.</td></tr>
-                  <tr><td><code>src/plugin.ts</code></td><td>Resolves configuration, creates the notification sender and index loader, wires both tools, and returns the hook contract.</td></tr>
-                  <tr><td><code>src/indexing.ts</code></td><td>Scans each configured section and records sorted relative file paths per scope in the serialized index.</td></tr>
-                  <tr><td><code>src/storage.ts</code></td><td>Reads freshness markers, loads and writes the index JSON, and decides when a missing stored index should be rebuilt.</td></tr>
-                  <tr><td><code>src/search.ts</code></td><td>Builds the matcher, reads indexed files, scans lines, and returns structured hits with scope, file, line, and excerpt.</td></tr>
-                  <tr><td><code>src/tools.ts</code></td><td>Defines the host-facing <code>cache_status</code> and <code>cache_search</code> tool wrappers, schemas, output formatting, and notification dispatch.</td></tr>
-                  <tr><td><code>src/permissions.ts</code></td><td>Implements the narrow <code>permission.ask</code> compatibility check for external directory requests that target the configured cache directory.</td></tr>
-                  <tr><td><code>src/notifications.ts</code></td><td>Builds prompt-style notification text and sends it back through the active session with debug logging on failure.</td></tr>
+                  <tr><td><code>src/index.ts</code></td><td>Named-export public entrypoint for the Git-first core surface.</td></tr>
+                  <tr><td><code>src/git-cache-schema.ts</code></td><td>Zod-backed Git cache spec, custom validation rules, and ready-source resolution.</td></tr>
+                  <tr><td><code>src/git-cache-paths.ts</code></td><td>Resolves source, artifact, readiness, and section base directories from the spec.</td></tr>
+                  <tr><td><code>src/git-cache-state.ts</code></td><td>Defines the persisted state manifest and freshness calculation helpers.</td></tr>
+                  <tr><td><code>src/git-cache-plugin.ts</code></td><td>Owns Git sync, runtime context construction, search-index refresh, and OpenCode tool assembly.</td></tr>
+                  <tr><td><code>src/indexing.ts</code></td><td>Scans each configured section and records sorted relative files for the search index.</td></tr>
+                  <tr><td><code>src/search.ts</code></td><td>Reads indexed files, scans lines, and returns structured hits with scope, file, line, and excerpt.</td></tr>
+                  <tr><td><code>src/storage.ts</code></td><td>Persists the serialized search index and offers minimal file-existence helpers.</td></tr>
+                  <tr><td><code>src/tools.ts</code></td><td>Reusable status/search tool wrappers, output formatting, and notification wiring.</td></tr>
+                  <tr><td><code>src/permissions.ts</code></td><td>Narrow cache-directory permission handler for <code>permission.ask</code>.</td></tr>
+                  <tr><td><code>src/notifications.ts</code></td><td>Prompt-style notification formatting and session delivery.</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <section id="index-lifecycle">
+        <section id="git-cache-lifecycle">
           <h2 class="section-header">
-            <span>Index lifecycle</span>
+            <span>Files and directories on disk</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="architecture">
-              <pre class="mermaid">flowchart LR
-    Start[loadIndex call] --> Read["readIndex(indexFile)"]
-    Read --> Found{stored index found?}
-    Found -->|yes| ReturnStored[return stored index]
-    Found -->|no| Ready{ready marker exists?}
-    Ready -->|no| ReturnNull[return null]
-    Ready -->|yes| Build["createIndex()"]
-    Build --> Persist["persistIndex() or writeIndex()"]
-    Persist --> ReturnBuilt[return new index]</pre>
+              <pre class="mermaid">flowchart TD
+    CacheDir[resolved cache dir] --> SourceDir1[source checkout 1]
+    CacheDir --> SourceDir2[source checkout N]
+    SourceDir1 --> ArtifactDir[artifact path under source]
+    CacheDir --> State[cache-state.json]
+    CacheDir --> Index[search-index.json]</pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="spec-validation-keeps-the-contract-honest">
+          <h2 class="section-header">
+            <span>What the spec describes</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p>The cache spec describes everything the runtime needs: where to clone repositories, where artifacts live, which directories are indexed for search, and what names/descriptions the generated tools should use.</p>
+                <p>The schema also verifies internal references so artifacts and sections always point at real source or artifact IDs.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/git-cache-schema.ts</span>
+                    <span class="lines">Excerpts</span>
+                  </div>
+                  <pre><code class="language-ts">export const GitCacheSpecSchema = z
+  .strictObject({
+    schemaVersion: z.literal(1).optional(),
+    title: NonEmptyStringSchema,
+    service: NonEmptyStringSchema,
+    envVar: NonEmptyStringSchema,
+    defaultCacheSubdir: NonEmptyStringSchema,
+    initMessage: NonEmptyStringSchema,
+    updateTool: GitCacheUpdateToolConfigSchema,
+    statusTool: GitCacheToolConfigSchema,
+    searchTool: GitCacheSearchToolConfigSchema,
+    sources: z.array(GitCacheSourceSpecSchema).min(1),
+    artifacts: z.array(GitCacheArtifactSpecSchema).optional(),
+    sections: z.record(NonEmptyStringSchema, GitCacheSectionSpecSchema),
+    readySource: NonEmptyStringSchema.optional(),
+  })
+  .superRefine((spec, context) =&gt; {
+    ...
+  });
+
+export function defineGitCacheSpec&lt;const TScope extends string&gt;(
+  spec: GitCacheSpec&lt;TScope&gt;,
+): GitCacheSpec&lt;TScope&gt; {
+  return GitCacheSpecSchema.parse(spec) as GitCacheSpec&lt;TScope&gt;;
+}</code></pre>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         <section id="index-construction-stays-scope-aware">
           <h2 class="section-header">
-            <span>Index construction stays scope-aware</span>
+            <span>How sections become a search index</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>buildIndex()</code> receives the resolved cache directory and a scope map. It iterates the configured sections, scans each <code>baseDir</code> with its own glob-style patterns, and stores the resulting relative file list under that scope key.</p>
-                <p>That structure matters later because search can either scan every section or limit execution to one named scope without recomputing filesystem state.</p>
+                <p><code>buildGitCacheSearchIndex()</code> resolves each section to a concrete base directory. <code>buildIndex()</code> scans that directory with the section's patterns and stores the matched relative file paths.</p>
+                <p>Each section becomes one search scope in the generated search tool.</p>
                 <aside class="callout">
-                  <h3>Feature tie-in</h3>
-                  <p>The docs, code, or any other cached corpus can be separated into dedicated scopes with their own base directory and glob patterns.</p>
+                  <h3>Example</h3>
+                  <p>A plugin can expose one section for markdown docs in the repository and another section for generated HTML in an artifact directory.</p>
                 </aside>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
                     <span class="filename">src/indexing.ts</span>
-                    <span class="lines">Lines 90–109</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts"> 90 export async function buildIndex&lt;TScope extends string&gt;(input: {
- 91   cacheDir: string;
- 92   sections: Record&lt;TScope, SectionDefinition&gt;;
- 93 }): Promise&lt;Index&lt;TScope&gt;&gt; {
- 94   const sections = {} as Record&lt;TScope, Section&gt;;
- 95   const entries = Object.entries(input.sections) as Array&lt;[TScope, SectionDefinition]&gt;;
- 96 
- 97   for (const [scope, definition] of entries) {
- 98     sections[scope] = {
- 99       baseDir: definition.baseDir,
-100       files: await scanRelativeFiles(definition.baseDir, definition.patterns),
-101     };
-102   }
-103 
-104   return {
-105     createdAt: new Date().toISOString(),
-106     cacheDir: input.cacheDir,
-107     sections,
-108   };
-109 }</code></pre>
+                  <pre><code class="language-ts">export async function buildIndex&lt;TScope extends string&gt;(input: {
+  cacheDir: string;
+  sections: Record&lt;TScope, SectionDefinition&gt;;
+}): Promise&lt;Index&lt;TScope&gt;&gt; {
+  const sections = {} as Record&lt;TScope, Section&gt;;
+  const entries = Object.entries(input.sections) as Array&lt;[TScope, SectionDefinition]&gt;;
+
+  for (const [scope, definition] of entries) {
+    sections[scope] = {
+      baseDir: definition.baseDir,
+      files: await scanRelativeFiles(definition.baseDir, definition.patterns),
+    };
+  }
+
+  return {
+    createdAt: new Date().toISOString(),
+    cacheDir: input.cacheDir,
+    sections,
+  };
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="lifecycle-keeps-runtime-startup-cheap">
+        <section id="runtime-context-keeps-state-and-index-coherent">
           <h2 class="section-header">
-            <span>Lifecycle keeps runtime startup cheap</span>
+            <span>What the runtime context gives you</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>loadIndex()</code> first attempts to read the persisted JSON index. Only when that file is missing and the ready marker exists does it call the supplied index builder and optionally persist the fresh result.</p>
-                <p><code>createIndexLoader()</code> packages that behavior into the lazy loader used by the tools, which keeps startup cheap while still recovering from a missing serialized index.</p>
+                <p><code>createRuntimeContext()</code> gives the generated tools and downstream extensions a single place to read state, refresh the index, resolve source and artifact paths, run commands, and send notifications.</p>
+                <p>This is the object passed into <code>extendStatus(runtime)</code> and <code>extraTools(runtime)</code>.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">src/storage.ts</span>
-                    <span class="lines">Lines 68–101</span>
+                    <span class="filename">src/git-cache-plugin.ts</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts"> 68 export async function loadIndex&lt;TIndex&gt;(input: {
- 69   indexFile: string;
- 70   readyPath: string;
- 71   createIndex: () =&gt; Promise&lt;TIndex&gt;;
- 72   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
- 73 }): Promise&lt;TIndex | null&gt; {
- 74   const storedIndex = await readIndex&lt;TIndex&gt;(input.indexFile);
- 75   if (storedIndex != null) {
- 76     return storedIndex;
- 77   }
- 78 
- 79   const ready = await pathExists(input.readyPath);
- 80   if (!ready) {
- 81     return null;
- 82   }
- 83 
- 84   const index = await input.createIndex();
- 85   if (input.persistIndex != null) {
- 86     await input.persistIndex(index);
- 87   } else {
- 88     await writeIndex(input.indexFile, index);
- 89   }
- 90 
- 91   return index;
- 92 }
- 93 
- 94 export function createIndexLoader&lt;TIndex&gt;(input: {
- 95   indexFile: string;
- 96   readyPath: string;
- 97   createIndex: () =&gt; Promise&lt;TIndex&gt;;
- 98   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
- 99 }): () =&gt; Promise&lt;TIndex | null&gt; {
-100   return async (): Promise&lt;TIndex | null&gt; =&gt; loadIndex(input);
-101 }</code></pre>
+                  <pre><code class="language-ts">function createRuntimeContext&lt;TScope extends string&gt;(input: {...}): GitCacheRuntimeContext&lt;TScope&gt; {
+  const indexFile = getGitCacheIndexPath(input.cacheDir);
+  const stateFile = getGitCacheStateFile(input.cacheDir);
+  const scopes = getGitCacheScopes(input.spec);
+  const readySourceId = resolveReadySourceId(input.spec);
+
+  const readState = async (): Promise&lt;GitCacheState&gt; =&gt; {
+    return loadGitCacheState(input.spec, input.cacheDir, {...});
+  };
+
+  const refreshIndex = async (): Promise&lt;Index&lt;TScope&gt;&gt; =&gt; {
+    const index = await buildGitCacheSearchIndex(input.spec, input.cacheDir);
+    await writeIndex(indexFile, index);
+    await updateState((state) =&gt; {
+      state.indexedAt = index.createdAt;
+      state.indexFile = indexFile;
+    });
+    return index;
+  };
+
+  const loadIndex = async (): Promise&lt;Index&lt;TScope&gt; | null&gt; =&gt; {
+    if (!(await pathExists(join(getGitSourceDir(input.spec, input.cacheDir, readySourceId), ".git")))) {
+      return null;
+    }
+
+    const storedIndex = await readIndex&lt;Index&lt;TScope&gt;&gt;(indexFile);
+    return isIndexForScopes(storedIndex, scopes) ? storedIndex : refreshIndex();
+  };
+
+  return { ... };
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
+      </div>
 
-      </div><!-- end #architecture -->
-
-      <!-- ======================================================
-           CONFIGURATION
-           ====================================================== -->
       <div id="configuration" class="page-section">
-
         <section id="configuration-intro">
           <div class="intro">
-            <h2>Configuration and env mapping</h2>
-            <p>The plugin reads from context config first, then environment variables, and finally falls back to safe defaults rooted in the user's cache directory.</p>
+            <h2>Defining a cache</h2>
+            <p>A downstream plugin describes its cache in one Git cache spec. The spec names the tools, defines the repositories to clone, defines optional artifacts built from those repositories, and defines the searchable sections exposed by the search tool.</p>
           </div>
         </section>
 
         <section id="resolution-order">
           <h2 class="section-header">
-            <span>Resolution order</span>
+            <span>Cache directory and readiness</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
-            <ul style="margin-inline-start:var(--space-md);margin-block-end:var(--space-sm);color:var(--text-secondary);">
-              <li style="margin-block-end:var(--space-xs);">Nested <code>context.config.cache</code> values win first.</li>
-              <li style="margin-block-end:var(--space-xs);">Top-level <code>context.config</code> values are read next for compatibility.</li>
-              <li style="margin-block-end:var(--space-xs);">Environment variables fill in any missing values.</li>
-              <li style="margin-block-end:var(--space-xs);">Defaults are used when neither config nor env values are present.</li>
+            <ul>
+              <li><code>process.env[spec.envVar]</code> overrides the cache directory when present.</li>
+              <li>Otherwise the cache lives under <code>~/.cache/opencode/skills/&lt;spec.defaultCacheSubdir&gt;</code>.</li>
+              <li><code>readySource</code>, or the first ready-marked source, or the first source, determines whether the cache is initialized for status/search.</li>
+              <li><code>cache-state.json</code> and <code>search-index.json</code> are derived from that resolved cache directory.</li>
             </ul>
-            <aside class="callout">
-              <h3>Compatibility note</h3>
-              <p>Environment lookup accepts both <code>OPENCODE_CACHE_*</code> names and shorter <code>OC_CACHE_*</code> aliases.</p>
-            </aside>
           </div>
         </section>
 
         <section id="supported-fields">
           <h2 class="section-header">
-            <span>Supported fields</span>
+            <span>Important spec fields</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div style="overflow-x:auto;margin-block-end:var(--space-lg);">
               <table class="doc-table">
-                <thead><tr><th>Field</th><th>Environment variables</th><th>Default</th></tr></thead>
+                <thead><tr><th>Field</th><th>Meaning</th><th>Example</th></tr></thead>
                 <tbody>
-                  <tr><td><code>cacheDir</code></td><td><code>OPENCODE_CACHE_DIR</code>, <code>OC_CACHE_DIR</code></td><td><code>~/.cache/opencode-cache</code></td></tr>
-                  <tr><td><code>indexFile</code></td><td><code>OPENCODE_CACHE_INDEX_FILE</code>, <code>OC_CACHE_INDEX_FILE</code></td><td><code>&lt;cacheDir&gt;/.opencode-plugin/index.json</code></td></tr>
-                  <tr><td><code>readyPath</code></td><td><code>OPENCODE_CACHE_READY_PATH</code>, <code>OC_CACHE_READY_PATH</code></td><td><code>&lt;cacheDir&gt;/.opencode-plugin/ready</code></td></tr>
-                  <tr><td><code>sections</code></td><td><code>OPENCODE_CACHE_SECTIONS_JSON</code>, <code>OC_CACHE_SECTIONS_JSON</code></td><td>single <code>cache</code> scope rooted at <code>cacheDir</code></td></tr>
-                  <tr><td><code>maxAgeSeconds</code></td><td><code>OPENCODE_CACHE_MAX_AGE_SECONDS</code>, <code>OC_CACHE_MAX_AGE_SECONDS</code></td><td><code>86400</code></td></tr>
-                  <tr><td><code>statusToolName</code></td><td><code>OPENCODE_CACHE_STATUS_TOOL_NAME</code>, <code>OC_CACHE_STATUS_TOOL_NAME</code></td><td><code>cache_status</code></td></tr>
-                  <tr><td><code>searchToolName</code></td><td><code>OPENCODE_CACHE_SEARCH_TOOL_NAME</code>, <code>OC_CACHE_SEARCH_TOOL_NAME</code></td><td><code>cache_search</code></td></tr>
+                  <tr><td><code>envVar</code></td><td>Environment variable that overrides the cache directory.</td><td><code>OPENCODE_PYDANTIC_CACHE_DIR</code></td></tr>
+                  <tr><td><code>defaultCacheSubdir</code></td><td>Default directory name under <code>~/.cache/opencode/skills</code>.</td><td><code>pydantic</code></td></tr>
+                  <tr><td><code>sources</code></td><td>Repositories cloned into the cache directory.</td><td><code>[{ id, url, branch, sparse? }]</code></td></tr>
+                  <tr><td><code>artifacts</code></td><td>Directories inside a source tree that contain generated output.</td><td><code>[{ id, source, path, readiness? }]</code></td></tr>
+                  <tr><td><code>sections</code></td><td>Search scopes built from either a source tree or an artifact tree.</td><td><code>{ docs: { root, patterns } }</code></td></tr>
+                  <tr><td><code>readySource</code></td><td>Source used to determine whether status/search can treat the cache as initialized.</td><td><code>repo</code></td></tr>
+                  <tr><td><code>updateTool</code>, <code>statusTool</code>, <code>searchTool</code></td><td>Names and descriptions for the generated OpenCode tools.</td><td><code>{ name, description, ... }</code></td></tr>
                 </tbody>
               </table>
             </div>
@@ -1402,32 +1215,32 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
           <h2 class="section-header">
             <span>Sections define search scopes</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The <code>sections</code> object maps a scope name to a <code>baseDir</code> and a list of file patterns. Each key becomes a selectable search scope in the tool layer.</p>
-                <p>Use separate sections when you want a clean distinction between docs, source, generated text, or any other cached corpus.</p>
+                <p>The <code>sections</code> map is the source of truth for search scopes. Each key becomes a selectable scope in the generated search tool.</p>
+                <p>Each section points to either a source tree or an artifact tree, which lets one cache expose repository text, library source, and built documentation as separate searchable corpora.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">Example sections JSON</span>
-                    <span class="lines">JSON</span>
+                    <span class="filename">Example section map</span>
+                    <span class="lines">TypeScript</span>
                   </div>
-                  <pre><code class="language-json">{
-  "docs": {
-    "baseDir": "/absolute/path/to/cache/docs",
-    "patterns": ["**/*.md", "**/*.txt"]
+                  <pre><code class="language-ts">sections: {
+  docs: {
+    label: "Docs",
+    root: { kind: "source", id: "repo" },
+    patterns: ["docs/**/*.md", "docs/**/*.mdx"],
   },
-  "code": {
-    "baseDir": "/absolute/path/to/cache/code",
-    "patterns": ["**/*.ts", "**/*.tsx", "**/*.js"]
-  }
+  built: {
+    label: "Built",
+    root: { kind: "artifact", id: "site" },
+    patterns: ["**/*.html", "**/*.json"],
+  },
 }</code></pre>
                 </div>
               </div>
@@ -1437,144 +1250,89 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
         <section id="configuration-resolution-in-code">
           <h2 class="section-header">
-            <span>Configuration resolution in code</span>
+            <span>Resolved paths in code</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>readConfig()</code> pulls nested and top-level plugin options, while <code>resolvePluginConfig()</code> merges them with environment aliases, default cache paths, default sections, and fallback tool names.</p>
-                <p>This is the implementation to review when validating how a deployment will behave with partial configuration, relative paths, or <code>OPENCODE_CACHE_*</code> versus <code>OC_CACHE_*</code> environment input.</p>
+                <p><code>resolveGitCacheDir()</code>, <code>getGitSourceDir()</code>, <code>getGitArtifactDir()</code>, and <code>getGitSectionBaseDir()</code> turn the logical spec into concrete on-disk paths.</p>
+                <p>These helpers are useful both inside the runtime and in downstream package-specific tools.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">src/plugin.ts</span>
-                    <span class="lines">Lines 116–255</span>
+                    <span class="filename">src/git-cache-plugin.ts and src/git-cache-schema.ts</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">116 function readConfig(context: PluginContext, workingDirectory: string): PluginConfig {
-117   if (!isRecord(context.config)) {
-118     return {};
-119   }
-120 
-121   const nestedConfig = isRecord(context.config.cache) ? context.config.cache : {};
-122 
-123   return {
-124     cacheDir: readString(nestedConfig.cacheDir ?? context.config.cacheDir),
-125     indexFile: readString(nestedConfig.indexFile ?? context.config.indexFile),
-126     readyPath: readString(nestedConfig.readyPath ?? context.config.readyPath),
-127     sections: readSections(nestedConfig.sections ?? context.config.sections, workingDirectory),
-128     maxAgeSeconds: readInteger(nestedConfig.maxAgeSeconds ?? context.config.maxAgeSeconds),
-129     statusToolName: readString(nestedConfig.statusToolName ?? context.config.statusToolName),
-130     searchToolName: readString(nestedConfig.searchToolName ?? context.config.searchToolName),
-131   };
-132 }
-133 
-134 function readEnvValue(
-135   env: Record&lt;string, string | undefined&gt;,
-136   ...keys: string[]
-137 ): string | undefined {
-138   for (const key of keys) {
-139     const value = readString(env[key]);
-140     if (value != null) {
-141       return value;
-142     }
-143   }
-144 
-145   return undefined;
-146 }
-147 
-215 function resolvePluginConfig(context: PluginContext): ResolvedPluginConfig {
-216   const env = readEnv(context);
-217   const workingDirectory = readString(context.cwd) ?? context.directory;
-218   const config = readConfig(context, workingDirectory);
-219   const defaultCacheDir = join(homedir(), ".cache", "opencode-cache");
-220   const cacheDir = resolvePath(
-221     config.cacheDir ?? readEnvValue(env, "OPENCODE_CACHE_DIR", "OC_CACHE_DIR") ?? defaultCacheDir,
-222     workingDirectory,
-223   );
-224   const indexFile = resolvePath(
-225     config.indexFile ??
-226       readEnvValue(env, "OPENCODE_CACHE_INDEX_FILE", "OC_CACHE_INDEX_FILE") ??
-227       join(cacheDir, ".opencode-plugin", "index.json"),
-228     workingDirectory,
-229   );
-230   const readyPath = resolvePath(
-231     config.readyPath ??
-232       readEnvValue(env, "OPENCODE_CACHE_READY_PATH", "OC_CACHE_READY_PATH") ??
-233       join(cacheDir, ".opencode-plugin", "ready"),
-234     workingDirectory,
-235   );
-236   const sections = config.sections ?? readEnvSections(env, workingDirectory) ?? buildDefaultSections(cacheDir);
-237   const maxAgeSeconds =
-238     config.maxAgeSeconds ??
-239     Number.parseInt(readEnvValue(env, "OPENCODE_CACHE_MAX_AGE_SECONDS", "OC_CACHE_MAX_AGE_SECONDS") ?? "86400", 10);
-240 
-241   return {
-242     cacheDir,
-243     indexFile,
-244     readyPath,
-245     sections,
-246     maxAgeSeconds: Number.isFinite(maxAgeSeconds) &amp;&amp; maxAgeSeconds &gt; 0 ? maxAgeSeconds : 86400,
-247     statusToolName:
-248       config.statusToolName ??
-249       readEnvValue(env, "OPENCODE_CACHE_STATUS_TOOL_NAME", "OC_CACHE_STATUS_TOOL_NAME") ??
-250       "cache_status",
-251     searchToolName:
-252       config.searchToolName ??
-253       readEnvValue(env, "OPENCODE_CACHE_SEARCH_TOOL_NAME", "OC_CACHE_SEARCH_TOOL_NAME") ??
-254       "cache_search",
-255   };</code></pre>
+                  <pre><code class="language-ts">function resolveGitCacheDir(
+  envVar: string,
+  defaultCacheSubdir: string,
+  homeDirectory = homedir(),
+): string {
+  const configuredCacheDir = process.env[envVar];
+  if (configuredCacheDir != null &amp;&amp; configuredCacheDir.length &gt; 0) {
+    return configuredCacheDir;
+  }
+
+  return join(homeDirectory, ".cache", "opencode", "skills", defaultCacheSubdir);
+}
+
+export function resolveReadySourceId&lt;TScope extends string&gt;(
+  spec: GitCacheSpec&lt;TScope&gt;,
+): string {
+  if (spec.readySource != null) {
+    return spec.readySource;
+  }
+
+  const markedReadySource = spec.sources.find((source) =&gt; source.ready === true);
+  if (markedReadySource != null) {
+    return markedReadySource.id;
+  }
+
+  return spec.sources[0]!.id;
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
+      </div>
 
-      </div><!-- end #configuration -->
-
-      <!-- ======================================================
-           TOOLS
-           ====================================================== -->
       <div id="tools" class="page-section">
-
         <section id="tools-intro">
           <div class="intro">
-            <h2>Tool behavior and compatibility hooks</h2>
-            <p>The host-facing surface area is small: two tools and one compatibility hook. The implementation focuses on predictable output and lightweight host integration.</p>
+            <h2>Generated tools</h2>
+            <p>The generated plugin exposes three tools from the spec plus a narrow cache-directory permission hook. Tool names and descriptions come directly from the downstream plugin's spec.</p>
           </div>
         </section>
 
         <section id="behavior-summary">
           <h2 class="section-header">
-            <span>Behavior summary</span>
+            <span>Tool summary</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="card-grid">
               <article class="card">
-                <h3>cache_status</h3>
-                <p>Builds a readiness report from the ready marker path, freshness timestamp, index loader, and configured scopes.</p>
+                <h3>Update tool</h3>
+                <p>Runs Git sync for every source, refreshes the search index, persists state, and skips work when the cache is still fresh unless <code>force</code> is set.</p>
               </article>
               <article class="card">
-                <h3>cache_search</h3>
-                <p>Loads the index on demand, handles missing-index messaging, runs substring or regex search, then pushes a notification back to the active session.</p>
+                <h3>Status tool</h3>
+                <p>Reports cache directory, state and index files, freshness, source readiness, artifact readiness, and current search corpus counts.</p>
               </article>
               <article class="card">
-                <h3>Notifications</h3>
-                <p>Both tools send a prompt-style message so results show up in the session as well as in the returned tool output.</p>
+                <h3>Search tool</h3>
+                <p>Loads the persisted index on demand, supports scope filtering, regex mode, case sensitivity, and returns formatted hits with scope/file/line excerpts.</p>
               </article>
               <article class="card">
-                <h3>permission.ask</h3>
-                <p>Only sets <code>output.status = "allow"</code> when the request targets the configured cache directory through the host's permission request payload.</p>
+                <h3>Permission hook</h3>
+                <p>Allows cache-directory access requests so the generated tools can read and update the local cache.</p>
               </article>
             </div>
           </div>
@@ -1582,89 +1340,70 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
         <section id="tool-execution-path">
           <h2 class="section-header">
-            <span>Tool execution path</span>
+            <span>What the update tool does</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="architecture">
               <pre class="mermaid">sequenceDiagram
     participant Host
-    participant Tool as cache_search.execute
-    participant Loader as loadIndex
-    participant Runtime as searchIndex
+    participant Tool as updateTool.execute
+    participant Runtime as runtime.syncSources
+    participant Git as git subprocesses
+    participant State as cache-state.json
+    participant Index as search-index.json
     participant Session as session.prompt
-    Host->>Tool: execute(query, scope, options)
-    Tool->>Loader: load index
-    Loader-->>Tool: index or null
-    alt index missing
-        Tool->>Session: send missing-index notification
-        Tool-->>Host: missing output
-    else index available
-        Tool->>Runtime: search(index, query, scope, flags)
-        Runtime-->>Tool: SearchResult
-        Tool->>Session: send formatted notification
-        Tool-->>Host: formatted output
-    end</pre>
+    Host-&gt;&gt;Tool: execute(force?)
+    Tool-&gt;&gt;Runtime: sync sources
+    Runtime-&gt;&gt;Git: clone / fetch / reset / sparse-checkout
+    Runtime-&gt;&gt;State: write source state
+    Tool-&gt;&gt;Index: refreshIndex()
+    Tool-&gt;&gt;Session: send notification
+    Tool--&gt;&gt;Host: return output</pre>
             </div>
           </div>
         </section>
 
-        <section id="permission-matching-is-intentionally-narrow">
+        <section id="permission-matching-for-cache-access">
           <h2 class="section-header">
-            <span>Permission matching is intentionally narrow</span>
+            <span>Permission matching for cache access</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The compatibility hook does not blanket-allow all requests. It first checks that the host is asking for external directory access and then tests whether the request title or patterns include the configured cache directory.</p>
-                <p>That makes the behavior predictable for hosts that still use <code>permission.ask</code> without affecting unrelated requests.</p>
+                <p>The permission hook only checks <code>external_directory</code> requests whose title or pattern contains the resolved cache directory.</p>
+                <p>That keeps the allowance precise and predictable even when multiple tools or plugins are active in the same host session.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
                     <span class="filename">src/permissions.ts</span>
-                    <span class="lines">Lines 5–35</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">  5 function matchesPermission(cacheDir: string, request: PermissionRequest): boolean {
-  6   if (request.type !== "external_directory") {
-  7     return false;
-  8   }
-  9 
- 10   const patterns = Array.isArray(request.pattern)
- 11     ? request.pattern
- 12     : request.pattern
- 13       ? [request.pattern]
- 14       : [];
- 15 
- 16   return request.title.includes(cacheDir) || patterns.some((pattern) =&gt; pattern.includes(cacheDir));
- 17 }
- 18 
- 19 export function createPermissionHandler(
- 20   cacheDir: string,
- 21 ): NonNullable&lt;Hooks["permission.ask"]&gt; {
- 22   return async (
- 23     input: Parameters&lt;NonNullable&lt;Hooks["permission.ask"]&gt;&gt;[0],
- 24     output: Parameters&lt;NonNullable&lt;Hooks["permission.ask"]&gt;&gt;[1],
- 25   ): Promise&lt;void&gt; =&gt; {
- 26     if (
- 27       matchesPermission(cacheDir, {
- 28         type: input.type,
- 29         title: input.title,
- 30         pattern: input.pattern,
- 31       })
- 32     ) {
- 33       output.status = "allow";
- 34     }
- 35   };</code></pre>
+                  <pre><code class="language-ts">function matchesPermission(
+  cacheDir: string,
+  request: PermissionRequest,
+): boolean {
+  if (request.type !== "external_directory") {
+    return false;
+  }
+
+  const patterns = Array.isArray(request.pattern)
+    ? request.pattern
+    : request.pattern
+      ? [request.pattern]
+      : [];
+
+  return (
+    request.title.includes(cacheDir) ||
+    patterns.some((pattern) =&gt; pattern.includes(cacheDir))
+  );
+}</code></pre>
                 </div>
               </div>
             </div>
@@ -1673,80 +1412,72 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
         <section id="search-tools-format-results-after-execution">
           <h2 class="section-header">
-            <span>Search tools format results after execution</span>
+            <span>What the search tool returns</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The search tool wrapper handles the common host-facing behavior: define the argument schema, load the index on demand, emit the missing-index notification when needed, and format the final hit list for the host.</p>
-                <p>The actual matching work is delegated to <code>searchIndex()</code> in <code>src/search.ts</code>, which keeps the wrapper focused on validation, presentation, and session messaging.</p>
+                <p>The generated search tool accepts a query and optional scope/filter flags, loads the persisted index on demand, and formats each hit as <code>[scope] file:line: excerpt</code>.</p>
+                <p>The lower-level helper still returns structured search results, so downstream code can use the same search engine without the formatted tool output.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
                     <span class="filename">src/tools.ts</span>
-                    <span class="lines">Lines 41–95</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts"> 41 export function createSearchTool&lt;TIndex, TScope extends string&gt;(input: {
- 42   description: string;
- 43   notificationTitle: string;
- 44   missingOutput: string;
- 45   scopeValues: readonly [typeof ALL_SCOPE, ...TScope[]];
- 46   loadIndex: () =&gt; Promise&lt;TIndex | null&gt;;
- 47   search: (input: {
- 48     index: TIndex;
- 49     query: string;
- 50     scope?: TScope | typeof ALL_SCOPE;
- 51     regex?: boolean;
- 52     caseSensitive?: boolean;
- 53     limit?: number;
- 54   }) =&gt; Promise&lt;SearchResult&lt;TScope&gt;&gt;;
- 55   sendNotification: (sessionID: string, message: string) =&gt; Promise&lt;void&gt;;
- 56 }): ToolDefinition {
- 57   return tool({
- 58     description: input.description,
- 59     args: {
- 60       query: tool.schema.string().describe("Substring or regular expression to search for."),
- 61       scope: tool.schema
- 62         .enum(input.scopeValues)
- 63         .optional()
- 64         .describe(`Search scope: ${input.scopeValues.join(", ")}.`),
- 65       regex: tool.schema.boolean().optional().describe("Treat query as a regular expression."),
- 66       case_sensitive: tool.schema.boolean().optional().describe("Use case-sensitive matching."),
- 67       limit: tool.schema.number().int().min(1).max(100).optional().describe("Maximum number of hits to return."),
- 68     },
- 69     async execute(args, context: ToolContext) {
- 70       const index = await input.loadIndex();
- 71       if (index == null) {
- 72         await input.sendNotification(
- 73           context.sessionID,
- 74           buildNotification(input.notificationTitle, input.missingOutput),
- 75         );
- 76         return input.missingOutput;
- 77       }
- 78 
- 79       const output = formatSearchOutput(
- 80         args.query,
- 81         await input.search({
- 82           index,
- 83           query: args.query,
- 84           scope: args.scope,
- 85           regex: args.regex,
- 86           caseSensitive: args.case_sensitive,
- 87           limit: args.limit,
- 88         }),
- 89       );
- 90 
- 91       await input.sendNotification(context.sessionID, buildNotification(input.notificationTitle, output));
- 92       return output;
- 93     },
- 94   });
- 95 }</code></pre>
+                  <pre><code class="language-ts">export function createSearchTool&lt;TIndex, TScope extends string&gt;(input: {
+  description: string;
+  notificationTitle: string;
+  missingOutput: string;
+  scopeValues: readonly [typeof ALL_SCOPE, ...TScope[]];
+  scopeDescription?: string;
+  failureLabel?: string;
+  loadIndex: () =&gt; Promise&lt;TIndex | null&gt;;
+  search: (input: {
+    index: TIndex;
+    query: string;
+    scope?: TScope | typeof ALL_SCOPE;
+    regex?: boolean;
+    caseSensitive?: boolean;
+    limit?: number;
+  }) =&gt; Promise&lt;SearchResult&lt;TScope&gt;&gt;;
+  sendNotification: (sessionID: string, message: string) =&gt; Promise&lt;void&gt;;
+}): ToolDefinition {
+  return tool({
+    description: input.description,
+    args: {...},
+    async execute(args, context: ToolContext) {
+      try {
+        const index = await input.loadIndex();
+        if (index == null) {
+          ...
+          return input.missingOutput;
+        }
+
+        const output = formatSearchOutput(
+          args.query,
+          await input.search({...}),
+        );
+
+        await input.sendNotification(
+          context.sessionID,
+          buildNotification(input.notificationTitle, output),
+        );
+        return output;
+      } catch (error: unknown) {
+        const message = input.failureLabel == null
+          ? formatErrorMessage("Invalid search query", error)
+          : formatErrorMessage(input.failureLabel, error);
+        ...
+        return message;
+      }
+    },
+  });
+}</code></pre>
                 </div>
               </div>
             </div>
@@ -1755,71 +1486,57 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
 
         <section id="notifications-stay-separate-from-tool-logic">
           <h2 class="section-header">
-            <span>Notifications stay separate from tool logic</span>
+            <span>How notifications are sent</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>buildNotification()</code> creates the prompt-style message body shared by both tools, and <code>createNotificationSender()</code> pushes that message into the active session with <code>noReply</code> set.</p>
-                <p>If the session prompt fails, the sender falls back to debug logging through the plugin client instead of failing the tool execution path.</p>
+                <p><code>buildNotification()</code> builds a prompt-style message shared by all generated tools, and <code>createNotificationSender()</code> pushes that message into the active session with <code>noReply</code> enabled.</p>
+                <p>If notification delivery fails, the runtime falls back to debug logging instead of breaking the tool result itself.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
                     <span class="filename">src/notifications.ts</span>
-                    <span class="lines">Lines 3–31</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">  3 export function buildNotification(title: string, output: string): string {
-  4   return [`▣ ${title}`, "", output].join("\n");
-  5 }
-  6 
-  7 export function createNotificationSender(input: {
-  8   client: PluginInput["client"];
-  9   service: string;
- 10 }): (sessionID: string, message: string) =&gt; Promise&lt;void&gt; {
- 11   return async (sessionID: string, message: string): Promise&lt;void&gt; =&gt; {
- 12     try {
- 13       await input.client.session.prompt({
- 14         path: { id: sessionID },
- 15         body: {
- 16           noReply: true,
- 17           parts: [{ type: "text", text: message, ignored: true }],
- 18         },
- 19       });
- 20     } catch (error: unknown) {
- 21       const messageText = error instanceof Error ? error.message : String(error);
- 22       await input.client.app.log({
- 23         body: {
- 24           service: input.service,
- 25           level: "debug",
- 26           message: `failed to send notification: ${messageText}`,
- 27         },
- 28       });
- 29     }
- 30   };
- 31 }</code></pre>
+                  <pre><code class="language-ts">export function buildNotification(title: string, output: string): string {
+  return [`▣ ${title}`, "", output].join("\n");
+}
+
+export function createNotificationSender(input: {
+  client: PluginInput["client"];
+  service: string;
+}): (sessionID: string, message: string) =&gt; Promise&lt;void&gt; {
+  return async (sessionID: string, message: string): Promise&lt;void&gt; =&gt; {
+    try {
+      await input.client.session.prompt({
+        path: { id: sessionID },
+        body: {
+          noReply: true,
+          parts: [{ type: "text", text: message, ignored: true }],
+        },
+      });
+    } catch (error: unknown) {
+      ...
+    }
+  };
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
+      </div>
 
-      </div><!-- end #tools -->
-
-      <!-- ======================================================
-           CODE WALKTHROUGH
-           ====================================================== -->
       <div id="code-walkthrough" class="page-section">
-
         <section id="code-walkthrough-intro">
           <div class="intro">
             <h2>Code walkthrough</h2>
-            <p>This section is optimized for the two-column reading experience: explanation on the left, relevant source excerpts on the right.</p>
+            <p>This walkthrough follows the lifecycle of a downstream plugin using the package, from defining the cache spec to syncing sources and searching the resulting corpus.</p>
           </div>
         </section>
 
@@ -1827,406 +1544,313 @@ footer a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; 
           <h2 class="section-header">
             <span>Step 0: start from the public entrypoint</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>src/index.ts</code> is intentionally small. It re-exports the package's types and helper functions, then re-exports the default plugin implementation from <code>src/plugin.ts</code>.</p>
-                <p>That keeps imports stable for consumers while letting the heavier runtime wiring stay in a dedicated module.</p>
+                <p><code>src/index.ts</code> is where a downstream plugin starts. It re-exports the spec builder, runtime builder, state helpers, path helpers, and search helpers.</p>
+                <p>A plugin can stay at the high level with <code>createGitCachePlugin()</code> or drop to lower-level helpers when it needs custom build steps.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
                     <span class="filename">src/index.ts</span>
-                    <span class="lines">Lines 1–17</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">  1 export { ALL_SCOPE, type Freshness, type Index, type PermissionRequest, type SearchHit, type SearchOptions, type SearchResult, type Section, type SectionDefinition } from "./types";
-  2 export { buildIndex } from "./indexing";
-  3 export {
-  4   createIndexLoader,
-  5   loadIndex,
-  6   pathExists,
-  7   readFreshness,
-  8   readIndex,
-  9   writeIndex,
- 10   writeTimestamp,
- 11 } from "./storage";
- 12 export { searchIndex } from "./search";
- 13 export { buildNotification, createNotificationSender } from "./notifications";
- 14 export { createPermissionHandler } from "./permissions";
- 15 export { createSearchTool, createStatusTool } from "./tools";
- 16 export { createPluginHooks } from "./plugin";
- 17 export { default } from "./plugin";</code></pre>
+                  <pre><code class="language-ts">export { buildIndex } from "./indexing";
+export { pathExists, readIndex, writeIndex } from "./storage";
+export { searchIndex } from "./search";
+export {
+  DEFAULT_GIT_CACHE_MAX_AGE_SECONDS,
+  buildGitCacheSearchIndex,
+  createGitCachePlugin,
+  formatCommandFailure,
+  formatGitCacheIndexCounts,
+  searchGitCacheIndex,
+} from "./git-cache-plugin";
+export {
+  defineGitCacheSpec,
+  getGitCacheScopes,
+  resolveReadySourceId,
+  GitCacheSpecSchema,
+} from "./git-cache-schema";</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="step-1-resolve-config-and-defaults">
+        <section id="step-1-define-and-validate-the-spec">
           <h2 class="section-header">
-            <span>Step 1: resolve config and defaults</span>
+            <span>Step 1: define and validate the spec</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The plugin reads nested plugin options, compatibility top-level options, and environment overrides before normalizing them into one resolved config object with absolute paths and default section definitions.</p>
-                <p>This is the main control point for cache directory resolution, ready-marker paths, index-file paths, tool names, and environment alias handling.</p>
+                <p>Every downstream cache plugin starts by constructing a Git cache spec and passing it through <code>defineGitCacheSpec()</code>. That one step validates the package metadata, sources, artifacts, sections, and ready-source rules.</p>
+                <p>The result is a typed, trusted config object that the runtime can use directly.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">src/plugin.ts</span>
-                    <span class="lines">Lines 101–255</span>
+                    <span class="filename">src/git-cache-schema.ts</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">101 function readEnv(context: PluginContext): Record&lt;string, string | undefined&gt; {
-102   const merged = { ...process.env };
-103   if (!isRecord(context.env)) {
-104     return merged;
-105   }
-106 
-107   for (const [key, value] of Object.entries(context.env)) {
-108     if (typeof value === "string" || value === undefined) {
-109       merged[key] = value;
-110     }
-111   }
-112 
-113   return merged;
-114 }
-115 
-116 function readConfig(context: PluginContext, workingDirectory: string): PluginConfig {
-117   if (!isRecord(context.config)) {
-118     return {};
-119   }
-120 
-121   const nestedConfig = isRecord(context.config.cache) ? context.config.cache : {};
-122 
-123   return {
-124     cacheDir: readString(nestedConfig.cacheDir ?? context.config.cacheDir),
-125     indexFile: readString(nestedConfig.indexFile ?? context.config.indexFile),
-126     readyPath: readString(nestedConfig.readyPath ?? context.config.readyPath),
-127     sections: readSections(nestedConfig.sections ?? context.config.sections, workingDirectory),
-128     maxAgeSeconds: readInteger(nestedConfig.maxAgeSeconds ?? context.config.maxAgeSeconds),
-129     statusToolName: readString(nestedConfig.statusToolName ?? context.config.statusToolName),
-130     searchToolName: readString(nestedConfig.searchToolName ?? context.config.searchToolName),
-131   };
-132 }
-133 
-215 function resolvePluginConfig(context: PluginContext): ResolvedPluginConfig {
-216   const env = readEnv(context);
-217   const workingDirectory = readString(context.cwd) ?? context.directory;
-218   const config = readConfig(context, workingDirectory);
-219   const defaultCacheDir = join(homedir(), ".cache", "opencode-cache");
-220   const cacheDir = resolvePath(
-221     config.cacheDir ?? readEnvValue(env, "OPENCODE_CACHE_DIR", "OC_CACHE_DIR") ?? defaultCacheDir,
-222     workingDirectory,
-223   );
-254   ...
-255 };</code></pre>
+                  <pre><code class="language-ts">export const GitCacheSpecSchema = z
+  .strictObject({...})
+  .superRefine((spec, context) =&gt; {
+    const sourceIds = new Set&lt;string&gt;();
+    const readySources = spec.sources.filter((source) =&gt; source.ready === true);
+    const artifacts = spec.artifacts ?? [];
+    const scopes = Object.keys(spec.sections);
+    ...
+  });
+
+export function defineGitCacheSpec&lt;const TScope extends string&gt;(
+  spec: GitCacheSpec&lt;TScope&gt;,
+): GitCacheSpec&lt;TScope&gt; {
+  return GitCacheSpecSchema.parse(spec) as GitCacheSpec&lt;TScope&gt;;
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="step-2-build-or-reuse-the-index">
+        <section id="step-2-build-runtime-context-and-index-loading">
           <h2 class="section-header">
-            <span>Step 2: build or reuse the index</span>
+            <span>Step 2: build runtime context and index loading</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The loader defers work until a tool actually needs the index. If a stored JSON file exists, it is reused immediately. Otherwise the loader checks the ready marker and only then calls the index builder.</p>
-                <p>That separation keeps persistence in <code>src/storage.ts</code> and the filesystem scan in <code>src/indexing.ts</code>, which makes the fallback path explicit at the line level.</p>
+                <p>The runtime context computes derived file locations once and then exposes helper methods for state, search, notifications, and subprocess execution.</p>
+                <p><code>runtime.loadIndex()</code> is lazy: it only returns an index when the ready source exists and otherwise refreshes the stored payload when needed.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">src/storage.ts</span>
-                    <span class="lines">Lines 68–101</span>
+                    <span class="filename">src/git-cache-plugin.ts</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts"> 68 export async function loadIndex&lt;TIndex&gt;(input: {
- 69   indexFile: string;
- 70   readyPath: string;
- 71   createIndex: () =&gt; Promise&lt;TIndex&gt;;
- 72   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
- 73 }): Promise&lt;TIndex | null&gt; {
- 74   const storedIndex = await readIndex&lt;TIndex&gt;(input.indexFile);
- 75   if (storedIndex != null) {
- 76     return storedIndex;
- 77   }
- 78 
- 79   const ready = await pathExists(input.readyPath);
- 80   if (!ready) {
- 81     return null;
- 82   }
- 83 
- 84   const index = await input.createIndex();
- 85   if (input.persistIndex != null) {
- 86     await input.persistIndex(index);
- 87   } else {
- 88     await writeIndex(input.indexFile, index);
- 89   }
- 90 
- 91   return index;
- 92 }
- 93 
- 94 export function createIndexLoader&lt;TIndex&gt;(input: {
- 95   indexFile: string;
- 96   readyPath: string;
- 97   createIndex: () =&gt; Promise&lt;TIndex&gt;;
- 98   persistIndex?: (index: TIndex) =&gt; Promise&lt;void&gt;;
- 99 }): () =&gt; Promise&lt;TIndex | null&gt; {
-100   return async (): Promise&lt;TIndex | null&gt; =&gt; loadIndex(input);
-101 }</code></pre>
-                </div>
+                  <pre><code class="language-ts">const indexFile = getGitCacheIndexPath(input.cacheDir);
+const stateFile = getGitCacheStateFile(input.cacheDir);
+const scopes = getGitCacheScopes(input.spec);
+const readySourceId = resolveReadySourceId(input.spec);
 
-                <div class="code-content" style="margin-block-start:var(--space-sm);">
-                  <div class="code-header">
-                    <span class="filename">src/indexing.ts</span>
-                    <span class="lines">Lines 90–109</span>
-                  </div>
-                  <pre><code class="language-ts"> 90 export async function buildIndex&lt;TScope extends string&gt;(input: {
- 91   cacheDir: string;
- 92   sections: Record&lt;TScope, SectionDefinition&gt;;
- 93 }): Promise&lt;Index&lt;TScope&gt;&gt; {
- 94   const sections = {} as Record&lt;TScope, Section&gt;;
- 95   const entries = Object.entries(input.sections) as Array&lt;[TScope, SectionDefinition]&gt;;
- 96 
- 97   for (const [scope, definition] of entries) {
- 98     sections[scope] = {
- 99       baseDir: definition.baseDir,
-100       files: await scanRelativeFiles(definition.baseDir, definition.patterns),
-101     };
-102   }
-103 
-104   return {
-105     createdAt: new Date().toISOString(),
-106     cacheDir: input.cacheDir,
-107     sections,
-108   };
-109 }</code></pre>
+const refreshIndex = async (): Promise&lt;Index&lt;TScope&gt;&gt; =&gt; {
+  const index = await buildGitCacheSearchIndex(input.spec, input.cacheDir);
+  await writeIndex(indexFile, index);
+  await updateState((state) =&gt; {
+    state.indexedAt = index.createdAt;
+    state.indexFile = indexFile;
+  });
+  return index;
+};
+
+const loadIndex = async (): Promise&lt;Index&lt;TScope&gt; | null&gt; =&gt; {
+  if (!(await pathExists(join(getGitSourceDir(input.spec, input.cacheDir, readySourceId), ".git")))) {
+    return null;
+  }
+
+  const storedIndex = await readIndex&lt;Index&lt;TScope&gt;&gt;(indexFile);
+  return isIndexForScopes(storedIndex, scopes) ? storedIndex : refreshIndex();
+};</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="step-3-expose-host-facing-tools">
+        <section id="step-3-sync-git-sources-and-persist-state">
           <h2 class="section-header">
-            <span>Step 3: expose host-facing tools</span>
+            <span>Step 3: sync Git sources and persist state</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>Once config, client shims, and the index loader exist, the plugin builds the status and search tools with descriptions, notifications, and execution handlers.</p>
-                <p>The final return value is deliberately small: a tools map and the optional compatibility hook.</p>
+                <p><code>syncGitSource()</code> handles the actual repository update cycle: clone when missing, fetch/reset when present, and optionally manage sparse checkouts.</p>
+                <p><code>syncSources()</code> applies that logic to every source in the spec and records revision and readiness details in the persisted state file.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
-                    <span class="filename">src/plugin.ts</span>
-                    <span class="lines">Lines 314–372</span>
+                    <span class="filename">src/git-cache-plugin.ts</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">314 const createPlugin: Plugin = async (
-315   context: PluginInput,
-316   options?: PluginOptions,
-317 ): Promise&lt;Hooks&gt; =&gt; {
-318   const pluginContext: PluginContext = {
-319     ...context,
-320     config: options,
-321   };
-322   const config = resolvePluginConfig(pluginContext);
-323   const client = resolveClient(pluginContext);
-324   const sendNotification = createNotificationSender({
-325     client,
-326     service: "opencode-cache-core-plugin",
-327   });
-328   const loadIndex = createIndexLoader&lt;Index&lt;string&gt;&gt;({
-329     indexFile: config.indexFile,
-330     readyPath: config.readyPath,
-331     createIndex: async () =&gt;
-332       buildIndex({
-333         cacheDir: config.cacheDir,
-334         sections: config.sections,
-335       }),
-336     persistIndex: async (index) =&gt; writeIndex(config.indexFile, index),
-337   });
-338   const scopes = Object.keys(config.sections);
-339   const tools = {
-340     [config.statusToolName]: createStatusTool({...}),
-341     [config.searchToolName]: createSearchTool({...}),
-342   };
-363   return createPluginHooks({
-364     client,
-365     service: "opencode-cache-core-plugin",
-366     initMessage: `initialized cache plugin for ${config.cacheDir}`,
-367     permissionAsk: createPermissionHandler(config.cacheDir),
-368     tools,
-369   });
-370 };
-371 
-372 export default createPlugin;</code></pre>
+                  <pre><code class="language-ts">async function syncGitSource(
+  sourceDir: string,
+  source: GitCacheSourceSpec,
+): Promise&lt;string[]&gt; {
+  const sourceName = getGitSourceDirectoryName(source);
+  const installed = await pathExists(join(sourceDir, ".git"));
+
+  if (!installed) {
+    if (source.sparse != null) {
+      await runCommand("git", ["clone", "--filter=blob:none", "--no-checkout", "--depth", "1", "--branch", source.branch, source.url, sourceDir]);
+      await runCommand("git", ["sparse-checkout", "init", "--cone"], sourceDir);
+      await runCommand("git", ["sparse-checkout", "set", ...getSparseEntries(source)], sourceDir);
+      await runCommand("git", ["checkout", source.branch], sourceDir);
+    } else {
+      await runCommand("git", ["clone", "--depth", "1", "--branch", source.branch, source.url, sourceDir]);
+    }
+    return [`  Cloned ${sourceName}`];
+  }
+
+  await runCommand("git", ["fetch", "--depth", "1", "origin", source.branch], sourceDir);
+  await runCommand("git", ["reset", "--hard", `origin/${source.branch}`], sourceDir);
+  return [`  Updated ${sourceName}`];
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="step-4-run-the-search-algorithm">
+        <section id="step-4-assemble-the-generated-tools">
           <h2 class="section-header">
-            <span>Step 4: run the search algorithm</span>
+            <span>Step 4: assemble the generated tools</span>
             <button class="collapse-btn" aria-label="Toggle section" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </h2>
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>searchIndex()</code> loops through each selected scope, reads each indexed file, splits content into lines, and tests the query against each line.</p>
-                <p>Hits carry scope, file, line, and excerpt data so the tool wrapper can present useful output without re-reading the file again.</p>
+                <p><code>createGitCachePlugin()</code> resolves the spec, builds the runtime, and uses the shared tool helpers to publish the update, status, and search tools under the names defined by the downstream plugin's spec.</p>
+                <p>Any package-specific build or inspection tools can be added through <code>extraTools(runtime)</code> without reimplementing the core lifecycle.</p>
+              </div>
+              <div>
+                <div class="code-content">
+                  <div class="code-header">
+                    <span class="filename">src/git-cache-plugin.ts</span>
+                    <span class="lines">Excerpts</span>
+                  </div>
+                  <pre><code class="language-ts">export function createGitCachePlugin&lt;TScope extends string&gt;(
+  input: GitCachePluginOptions&lt;TScope&gt;,
+): Plugin {
+  return async ({ client }) =&gt; {
+    const spec = defineGitCacheSpec(input.spec);
+    const cacheDir = resolveGitCacheDir(spec.envVar, spec.defaultCacheSubdir);
+    const sendNotification = createNotificationSender({ client, service: spec.service });
+    const runtime = createRuntimeContext({
+      client,
+      spec,
+      cacheDir,
+      sendNotification,
+      maxAgeSeconds: input.maxAgeSeconds ?? DEFAULT_GIT_CACHE_MAX_AGE_SECONDS,
+    });
+
+    const tools: Hooks["tool"] = {
+      [spec.updateTool.name]: tool({...}),
+      [spec.statusTool.name]: createStatusTool({...}),
+      [spec.searchTool.name]: createSearchTool&lt;Index&lt;TScope&gt;, TScope&gt;({...}),
+    };
+
+    if (input.extraTools != null) {
+      Object.assign(tools, input.extraTools(runtime));
+    }
+
+    return {
+      tool: tools,
+      "permission.ask": createPermissionHandler(runtime.cacheDir),
+    };
+  };
+}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-5-run-the-search-algorithm">
+          <h2 class="section-header">
+            <span>Step 5: run the search algorithm</span>
+            <button class="collapse-btn" aria-label="Toggle section" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </h2>
+          <div class="section-content">
+            <div class="doc-row">
+              <div class="doc-content">
+                <p><code>searchIndex()</code> loops through the indexed files for the selected scopes, reads each file, scans line by line, and returns structured hits containing scope, file, line, and excerpt.</p>
+                <p>The tool wrapper then handles presentation, notifications, and package-specific error labeling around that core search loop.</p>
               </div>
               <div>
                 <div class="code-content">
                   <div class="code-header">
                     <span class="filename">src/search.ts</span>
-                    <span class="lines">Lines 25–84</span>
+                    <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts"> 25 export async function searchIndex&lt;TScope extends string&gt;(
- 26   index: Index&lt;TScope&gt;,
- 27   query: string,
- 28   options?: SearchOptions&lt;TScope&gt;,
- 29 ): Promise&lt;SearchResult&lt;TScope&gt;&gt; {
- 30   const scope = options?.scope ?? ALL_SCOPE;
- 31   const regex = options?.regex ?? false;
- 32   const caseSensitive = options?.caseSensitive ?? false;
- 33   const limit = options?.limit ?? 20;
- 34   const matcher = buildMatcher(query, regex, caseSensitive);
- 35   const scopes = scope === ALL_SCOPE ? (Object.keys(index.sections) as TScope[]) : [scope];
- 36   const hits: SearchHit&lt;TScope&gt;[] = [];
- 37   let scannedFiles = 0;
- 38 
- 39   for (const selectedScope of scopes) {
- 40     const section = index.sections[selectedScope];
- 41 
- 42     for (const relativeFile of section.files) {
- 43       scannedFiles += 1;
- 44 
- 45       let content: string;
- 46 
- 47       try {
- 48         content = await readFile(join(section.baseDir, relativeFile), "utf8");
- 49       } catch {
- 50         continue;
- 51       }
- 52 
- 53       const lines = content.split(/\r?\n/u);
- 54 
- 55       for (const [lineIndex, line] of lines.entries()) {
- 56         matcher.lastIndex = 0;
- 57         if (!matcher.test(line)) {
- 58           continue;
- 59         }
- 60 
- 61         hits.push({
- 62           scope: selectedScope,
- 63           file: relativeFile,
- 64           line: lineIndex + 1,
- 65           excerpt: trimExcerpt(line),
- 66         });
- 67 
- 68         if (hits.length &gt;= limit) {
- 69           return {
- 70             hits,
- 71             scannedFiles,
- 72             scope,
- 73           };
- 74         }
- 75       }
- 76     }
- 77   }
- 78 
- 79   return {
- 80     hits,
- 81     scannedFiles,
- 82     scope,
- 83   };
- 84 }</code></pre>
+                  <pre><code class="language-ts">export async function searchIndex&lt;TScope extends string&gt;(
+  index: Index&lt;TScope&gt;,
+  query: string,
+  options?: SearchOptions&lt;TScope&gt;,
+): Promise&lt;SearchResult&lt;TScope&gt;&gt; {
+  const scope = options?.scope ?? ALL_SCOPE;
+  const regex = options?.regex ?? false;
+  const caseSensitive = options?.caseSensitive ?? false;
+  const limit = options?.limit ?? 20;
+  const matcher = buildMatcher(query, regex, caseSensitive);
+  const scopes = scope === ALL_SCOPE ? (Object.keys(index.sections) as TScope[]) : [scope];
+  const hits: SearchHit&lt;TScope&gt;[] = [];
+  let scannedFiles = 0;
+
+  for (const selectedScope of scopes) {
+    const section = index.sections[selectedScope];
+    for (const relativeFile of section.files) {
+      scannedFiles += 1;
+      ...
+      if (matcher.test(line)) {
+        hits.push({ scope: selectedScope, file: relativeFile, line: lineIndex + 1, excerpt: trimExcerpt(line) });
+      }
+    }
+  }
+
+  return { hits, scannedFiles, scope };
+}</code></pre>
                 </div>
               </div>
             </div>
           </div>
         </section>
-
-      </div><!-- end #code-walkthrough -->
+      </div>
 
       <footer>
-        <p>Source in <code>src/</code> &mdash; <a href="https://github.com/yriveiro/opencode-cache-core" target="_blank" rel="noopener noreferrer">github.com/yriveiro/opencode-cache-core</a></p>
+        <p>Source in <code>src/</code> and package overview in <code>README.md</code> &mdash; <a href="https://github.com/yriveiro/opencode-cache-core" target="_blank" rel="noopener noreferrer">github.com/yriveiro/opencode-cache-core</a></p>
       </footer>
-
     </main>
 
     <nav class="float-nav" aria-label="Quick navigation">
-      <a href="#overview" class="float-nav-btn" data-tooltip="Overview" aria-label="Overview">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      </a>
-      <a href="#architecture" class="float-nav-btn" data-tooltip="Architecture" aria-label="Architecture">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-      </a>
-      <a href="#configuration" class="float-nav-btn" data-tooltip="Configuration" aria-label="Configuration">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </a>
-      <a href="#tools" class="float-nav-btn" data-tooltip="Tool behavior" aria-label="Tool behavior">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-      </a>
-      <a href="#code-walkthrough" class="float-nav-btn" data-tooltip="Code walkthrough" aria-label="Code walkthrough">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-      </a>
+      <a href="#overview" class="float-nav-btn" data-tooltip="Overview" aria-label="Overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></a>
+      <a href="#architecture" class="float-nav-btn" data-tooltip="Architecture" aria-label="Architecture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></a>
+      <a href="#configuration" class="float-nav-btn" data-tooltip="Configuration" aria-label="Configuration"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></a>
+      <a href="#tools" class="float-nav-btn" data-tooltip="Tool behavior" aria-label="Tool behavior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></a>
+      <a href="#code-walkthrough" class="float-nav-btn" data-tooltip="Code walkthrough" aria-label="Code walkthrough"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></a>
     </nav>
 
     <button class="back-to-top" aria-label="Back to top" data-tooltip="Back to top" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <polyline points="18 15 12 9 6 15"/>
-      </svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
     </button>
 
     <script>
-      // Pre-configure Mermaid before it loads so it does not auto-run on
-      // DOMContentLoaded and replace the source text before we can capture it.
       window.mermaid = window.mermaid ?? {};
       window.mermaid.startOnLoad = false;
-
-      // Disable Mermaid auto-start before the library loads. Raw diagram source
-      // is captured later by the main script, after the DOM exists but before any
-      // explicit render call runs.
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11.14.0/dist/mermaid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script>
-/* ============================================
-   Theme Toggle
-   ============================================ */
 const THEME_KEY = "oc-docs-theme";
 
 function getPreferredTheme() {
@@ -2235,19 +1859,54 @@ function getPreferredTheme() {
   return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem(THEME_KEY, theme);
-
-  // Swap highlight.js stylesheet
-  const hljsLink = document.getElementById("hljs-theme");
-  if (hljsLink) {
-    hljsLink.href = theme === "light"
-      ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
-      : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css";
+function mermaidThemeVars(theme) {
+  if (theme === "light") {
+    return {
+      background: "#ffffff",
+      primaryColor: "#f6f8fa",
+      primaryTextColor: "#24292f",
+      primaryBorderColor: "#0969da",
+      secondaryColor: "#f6f8fa",
+      secondaryTextColor: "#24292f",
+      secondaryBorderColor: "#0969da",
+      tertiaryColor: "#ffffff",
+      tertiaryTextColor: "#24292f",
+      tertiaryBorderColor: "#d0d7de",
+      lineColor: "#0969da",
+      textColor: "#24292f",
+      mainBkg: "#ffffff",
+      nodeBkg: "#f6f8fa",
+      nodeTextColor: "#24292f",
+      nodeBorder: "#0969da",
+      clusterBkg: "#f6f8fa",
+      clusterBorder: "#d0d7de",
+      edgeLabelBackground: "#ffffff",
+      labelTextColor: "#24292f",
+    };
   }
 
-  reinitMermaid(theme);
+  return {
+    background: "#0d1117",
+    primaryColor: "#161b22",
+    primaryTextColor: "#c9d1d9",
+    primaryBorderColor: "#58a6ff",
+    secondaryColor: "#161b22",
+    secondaryTextColor: "#c9d1d9",
+    secondaryBorderColor: "#58a6ff",
+    tertiaryColor: "#0d1117",
+    tertiaryTextColor: "#c9d1d9",
+    tertiaryBorderColor: "#30363d",
+    lineColor: "#58a6ff",
+    textColor: "#c9d1d9",
+    mainBkg: "#0d1117",
+    nodeBkg: "#161b22",
+    nodeTextColor: "#c9d1d9",
+    nodeBorder: "#58a6ff",
+    clusterBkg: "#0d1117",
+    clusterBorder: "#30363d",
+    edgeLabelBackground: "#0d1117",
+    labelTextColor: "#c9d1d9",
+  };
 }
 
 function captureMermaidSources() {
@@ -2258,6 +1917,39 @@ function captureMermaidSources() {
   });
 }
 
+function reinitMermaid(theme) {
+  if (window.mermaid && typeof window.mermaid.initialize === "function" && typeof window.mermaid.run === "function") {
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: "base",
+      themeVariables: mermaidThemeVars(theme),
+    });
+
+    document.querySelectorAll(".mermaid").forEach((el) => {
+      const source = el.getAttribute("data-mermaid-source");
+      if (source) {
+        el.removeAttribute("data-processed");
+        el.innerHTML = source;
+      }
+    });
+
+    window.mermaid.run({ nodes: document.querySelectorAll(".mermaid") }).catch(() => {});
+  }
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem(THEME_KEY, theme);
+  const hljsLink = document.getElementById("hljs-theme");
+  if (hljsLink) {
+    hljsLink.href = theme === "light"
+      ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+      : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css";
+  }
+  reinitMermaid(theme);
+}
+
 document.querySelector(".theme-toggle")?.addEventListener("click", () => {
   const current = document.documentElement.getAttribute("data-theme") ?? "dark";
   applyTheme(current === "dark" ? "light" : "dark");
@@ -2266,9 +1958,6 @@ document.querySelector(".theme-toggle")?.addEventListener("click", () => {
 captureMermaidSources();
 applyTheme(getPreferredTheme());
 
-/* ============================================
-   Collapsible Sections
-   ============================================ */
 document.querySelectorAll(".section-header").forEach((header) => {
   header.addEventListener("click", () => {
     const section = header.closest("section");
@@ -2276,9 +1965,6 @@ document.querySelectorAll(".section-header").forEach((header) => {
   });
 });
 
-/* ============================================
-   Copy Buttons
-   ============================================ */
 document.querySelectorAll(".code-content").forEach((block) => {
   const pre = block.querySelector("pre");
   if (!pre) return;
@@ -2311,11 +1997,8 @@ document.querySelectorAll(".code-content").forEach((block) => {
   block.appendChild(btn);
 });
 
-/* ============================================
-   Floating Nav & Top Nav Active State (IntersectionObserver)
-   ============================================ */
 const floatNavBtns = Array.from(document.querySelectorAll(".float-nav-btn"));
-const topNavLinks  = Array.from(document.querySelectorAll("nav:not(.float-nav) a"));
+const topNavLinks = Array.from(document.querySelectorAll("nav:not(.float-nav) a"));
 const pageSections = Array.from(document.querySelectorAll(".page-section[id]"));
 
 if (pageSections.length > 0) {
@@ -2334,16 +2017,12 @@ if (pageSections.length > 0) {
     { rootMargin: "-10% 0px -70% 0px" },
   );
 
-   pageSections.forEach((s) => {
-     observer.observe(s);
-   });
+  pageSections.forEach((section) => {
+    observer.observe(section);
+  });
 }
 
-/* ============================================
-   Back to Top Button
-   ============================================ */
 const backToTopBtn = document.querySelector(".back-to-top");
-
 if (backToTopBtn) {
   window.addEventListener("scroll", () => {
     backToTopBtn.classList.toggle("visible", window.scrollY > 400);
@@ -2354,86 +2033,10 @@ if (backToTopBtn) {
   });
 }
 
-/* ============================================
-   Mermaid
-   ============================================ */
-function mermaidThemeVars(theme) {
-  if (theme === "light") {
-    return {
-      background: "#ffffff",
-      primaryColor: "#f6f8fa",
-      primaryTextColor: "#24292f",
-      primaryBorderColor: "#0969da",
-      secondaryColor: "#f6f8fa",
-      secondaryTextColor: "#24292f",
-      secondaryBorderColor: "#0969da",
-      tertiaryColor: "#ffffff",
-      tertiaryTextColor: "#24292f",
-      tertiaryBorderColor: "#d0d7de",
-      lineColor: "#0969da",
-      textColor: "#24292f",
-      mainBkg: "#ffffff",
-      nodeBkg: "#f6f8fa",
-      nodeTextColor: "#24292f",
-      nodeBorder: "#0969da",
-      clusterBkg: "#f6f8fa",
-      clusterBorder: "#d0d7de",
-      edgeLabelBackground: "#ffffff",
-      labelTextColor: "#24292f",
-    };
-  }
-  return {
-    background: "#0d1117",
-    primaryColor: "#161b22",
-    primaryTextColor: "#c9d1d9",
-    primaryBorderColor: "#58a6ff",
-    secondaryColor: "#161b22",
-    secondaryTextColor: "#c9d1d9",
-    secondaryBorderColor: "#58a6ff",
-    tertiaryColor: "#0d1117",
-    tertiaryTextColor: "#c9d1d9",
-    tertiaryBorderColor: "#30363d",
-    lineColor: "#58a6ff",
-    textColor: "#c9d1d9",
-    mainBkg: "#0d1117",
-    nodeBkg: "#161b22",
-    nodeTextColor: "#c9d1d9",
-    nodeBorder: "#58a6ff",
-    clusterBkg: "#0d1117",
-    clusterBorder: "#30363d",
-    edgeLabelBackground: "#0d1117",
-    labelTextColor: "#c9d1d9",
-  };
-}
-
-function reinitMermaid(theme) {
-  if (window.mermaid && typeof window.mermaid.initialize === "function" && typeof window.mermaid.run === "function") {
-    window.mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "loose",
-      theme: "base",
-      themeVariables: mermaidThemeVars(theme),
-    });
-
-    // Re-render all mermaid diagrams
-    document.querySelectorAll(".mermaid").forEach((el) => {
-      const source = el.getAttribute("data-mermaid-source");
-      if (source) {
-        el.removeAttribute("data-processed");
-        el.innerHTML = source;
-      }
-    });
-
-    window.mermaid.run({ nodes: document.querySelectorAll(".mermaid") }).catch(() => {});
-  }
-}
-
-// Syntax highlighting — DOM is already parsed at this point (scripts at end of body)
 if (window.hljs) {
   window.hljs.highlightAll();
 }
 
-// Re-run once all resources are ready.
 window.addEventListener("load", () => {
   if (window.mermaid) {
     reinitMermaid(getPreferredTheme());

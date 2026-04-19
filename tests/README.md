@@ -1,32 +1,30 @@
 # Tests
 
-This directory is reserved for automated tests, fixtures, and verification notes for the `opencode-cache-core` package.
+This directory contains automated verification for the Git-first cache core.
 
-## Intended testing strategy
+## Current Coverage
 
-The plugin should be covered at three levels:
+- `tests/git-cache-core.test.ts`
 
-- unit tests for cache parsing, configuration resolution, readiness/freshness checks, and search formatting helpers;
-- integration-style tests for plugin construction, tool registration, and `permission.ask` compatibility behavior;
-- fixture-driven tests for index loading and search results across representative cache scopes and file patterns.
+The checked-in test suite currently covers:
 
-## What should be tested
+- Git cache spec validation and ready-source resolution
+- source, artifact, and section path resolution
+- cache freshness calculation from persisted timestamps
+- search-index construction and scoped search behavior
+- permission handling for cache-directory access requests
+- command failure formatting
 
-Priority scenarios for this plugin include:
+## Current Gaps
 
-- configuration precedence between plugin context values and environment variables;
-- default path generation for `cacheDir`, `indexFile`, `readyPath`, and default sections;
-- `cache_status` output for ready, stale, missing, and invalid index states;
-- `cache_search` behavior for query matching, scope filtering, regex mode, case sensitivity, and result limiting;
-- permission matching logic that allows only the configured cache directory through `permission.ask`;
-- build/runtime coherence that ensures `src/index.ts` remains aligned with the published `dist/index.js` artifact.
+The suite does not yet cover:
 
-## Current verification state
+- end-to-end Git subprocess execution against real repositories
+- full OpenCode host integration for tool registration and notifications
+- artifact build flows implemented by downstream plugins
 
-- This repository currently has no checked-in automated test suite in `tests/`.
-- Verification today relies on source review, type checking, and manual build validation.
-- Gaps remain around regression coverage for tool output, permission handling, and cache fixture variations.
+## Running Tests
 
-## When tests are added
-
-Keep fixtures small and representative, prefer deterministic cache/index inputs, and document any manual verification steps that still cannot be automated.
+```sh
+bun test
+```

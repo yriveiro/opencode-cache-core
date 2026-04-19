@@ -1,11 +1,11 @@
-import type { ClientLike } from "./types";
+import type { PluginInput } from "@opencode-ai/plugin";
 
 export function buildNotification(title: string, output: string): string {
 	return [`▣ ${title}`, "", output].join("\n");
 }
 
 export function createNotificationSender(input: {
-	client: ClientLike;
+	client: PluginInput["client"];
 	service: string;
 }): (sessionID: string, message: string) => Promise<void> {
 	return async (sessionID: string, message: string): Promise<void> => {

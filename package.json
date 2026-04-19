@@ -1,6 +1,6 @@
 {
   "name": "@yriveiro/opencode-cache-core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "src/index.ts",
@@ -11,8 +11,7 @@
       "default": "./dist/index.js"
     }
   },
-  "opencodePlugin": true,
-  "description": "OpenCode plugin for cache and search via DevDocs",
+  "description": "Git-first cache runtime and search utilities for OpenCode plugins",
   "author": "yriveiro",
   "license": "MIT",
   "repository": {
@@ -24,16 +23,18 @@
     "url": "https://github.com/yriveiro/opencode-cache-core/issues"
   },
   "keywords": [
-    "opencode-plugin",
+    "opencode",
     "cache",
-    "search"
+    "search",
+    "git"
   ],
   "files": [
     "src",
     "dist"
   ],
   "peerDependencies": {
-    "@opencode-ai/plugin": "^1.3.17"
+    "@opencode-ai/plugin": "^1.3.17",
+    "zod": "^4.1.8"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun",
@@ -52,6 +53,7 @@
     "@types/node": "^22.19.17",
     "bun-types": "^1.3.12",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6"
   }
 }

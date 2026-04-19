@@ -5,11 +5,20 @@ import {
 } from "@opencode-ai/plugin";
 
 import { buildNotification } from "./notifications";
-import type {
-	ALL_SCOPE,
-	SearchResult,
-	ToolDefinitionLike,
-} from "./types";
+import { ALL_SCOPE, type SearchResult } from "./types";
+
+function formatErrorMessage(prefix: string, error: unknown): string {
+	const details = error instanceof Error ? error.message : String(error);
+	return `${prefix}: ${details}`;
+}
+
+function buildSearchScopeDescription(input: {
+	scopeValues: readonly string[];
+	scopeDescription?: string;
+}): string {
+	return input.scopeDescription
+		?? `Search scope: ${input.scopeValues.join(", ")}.`;
+}
 
 function formatSearchOutput<TScope extends string>(
 	query: string,
@@ -52,17 +61,13 @@ export function createStatusTool(input: {
 	});
 }
 
-export function asToolDefinitionLike(
-	toolDefinition: ToolDefinition,
-): ToolDefinitionLike {
-	return toolDefinition as unknown as ToolDefinitionLike;
-}
-
 export function createSearchTool<TIndex, TScope extends string>(input: {
 	description: string;
 	notificationTitle: string;
 	missingOutput: string;
 	scopeValues: readonly [typeof ALL_SCOPE, ...TScope[]];
+	scopeDescription?: string;
+	failureLabel?: string;
 	loadIndex: () => Promise<TIndex | null>;
 	search: (input: {
 		index: TIndex;
@@ -83,7 +88,12 @@ export function createSearchTool<TIndex, TScope extends string>(input: {
 			scope: tool.schema
 				.enum(input.scopeValues)
 				.optional()
-				.describe(`Search scope: ${input.scopeValues.join(", ")}.`),
+				.describe(
+					buildSearchScopeDescription({
+						scopeValues: input.scopeValues,
+						scopeDescription: input.scopeDescription,
+					}),
+				),
 			regex: tool.schema
 				.boolean()
 				.optional()
@@ -101,32 +111,43 @@ export function createSearchTool<TIndex, TScope extends string>(input: {
 				.describe("Maximum number of hits to return."),
 		},
 		async execute(args, context: ToolContext) {
-			const index = await input.loadIndex();
-			if (index == null) {
+			try {
+				const index = await input.loadIndex();
+				if (index == null) {
+					await input.sendNotification(
+						context.sessionID,
+						buildNotification(input.notificationTitle, input.missingOutput),
+					);
+					return input.missingOutput;
+				}
+
+				const output = formatSearchOutput(
+					args.query,
+					await input.search({
+						index,
+						query: args.query,
+						scope: args.scope,
+						regex: args.regex,
+						caseSensitive: args.case_sensitive,
+						limit: args.limit,
+					}),
+				);
+
 				await input.sendNotification(
 					context.sessionID,
-					buildNotification(input.notificationTitle, input.missingOutput),
+					buildNotification(input.notificationTitle, output),
 				);
-				return input.missingOutput;
+				return output;
+			} catch (error: unknown) {
+				const message = input.failureLabel == null
+					? formatErrorMessage("Invalid search query", error)
+					: formatErrorMessage(input.failureLabel, error);
+				await input.sendNotification(
+					context.sessionID,
+					buildNotification(input.notificationTitle, message),
+				);
+				return message;
 			}
-
-			const output = formatSearchOutput(
-				args.query,
-				await input.search({
-					index,
-					query: args.query,
-					scope: args.scope,
-					regex: args.regex,
-					caseSensitive: args.case_sensitive,
-					limit: args.limit,
-				}),
-			);
-
-			await input.sendNotification(
-				context.sessionID,
-				buildNotification(input.notificationTitle, output),
-			);
-			return output;
 		},
 	});
 }

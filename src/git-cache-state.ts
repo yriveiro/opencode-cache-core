@@ -105,7 +105,9 @@ export function createInitialGitCacheState<TScope extends string>(
 	};
 }
 
-export async function readGitCacheState(stateFile: string): Promise<GitCacheState | null> {
+export async function readGitCacheState(
+	stateFile: string,
+): Promise<GitCacheState | null> {
 	try {
 		const content = await readFile(stateFile, "utf8");
 		const parsed = JSON.parse(content);
@@ -116,7 +118,10 @@ export async function readGitCacheState(stateFile: string): Promise<GitCacheStat
 	}
 }
 
-export async function writeGitCacheState(stateFile: string, state: GitCacheState): Promise<void> {
+export async function writeGitCacheState(
+	stateFile: string,
+	state: GitCacheState,
+): Promise<void> {
 	await mkdir(dirname(stateFile), { recursive: true });
 	await writeFile(stateFile, JSON.stringify(state, null, 2), "utf8");
 }
@@ -130,8 +135,10 @@ export async function loadGitCacheState<TScope extends string>(
 	},
 ): Promise<GitCacheState> {
 	const stateFile = getGitCacheStateFile(cacheDir);
-	return (await readGitCacheState(stateFile))
-		?? createInitialGitCacheState(spec, cacheDir, input);
+	return (
+		(await readGitCacheState(stateFile)) ??
+		createInitialGitCacheState(spec, cacheDir, input)
+	);
 }
 
 export function getGitCacheFreshness(

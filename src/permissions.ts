@@ -25,10 +25,7 @@ function matchesPermission(
 export function createPermissionHandler(
 	cacheDir: string,
 ): NonNullable<Hooks["permission.ask"]> {
-	return async (
-		input,
-		output,
-	): Promise<void> => {
+	return async (input, output): Promise<void> => {
 		if (
 			matchesPermission(cacheDir, {
 				type: input.type,

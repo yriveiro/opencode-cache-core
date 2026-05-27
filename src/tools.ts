@@ -1,11 +1,11 @@
 import {
-	tool,
 	type ToolContext,
 	type ToolDefinition,
+	tool,
 } from "@opencode-ai/plugin";
 
 import { buildNotification } from "./notifications";
-import { ALL_SCOPE, type SearchResult } from "./types";
+import type { ALL_SCOPE, SearchResult } from "./types";
 
 function formatErrorMessage(prefix: string, error: unknown): string {
 	const details = error instanceof Error ? error.message : String(error);
@@ -16,8 +16,9 @@ function buildSearchScopeDescription(input: {
 	scopeValues: readonly string[];
 	scopeDescription?: string;
 }): string {
-	return input.scopeDescription
-		?? `Search scope: ${input.scopeValues.join(", ")}.`;
+	return (
+		input.scopeDescription ?? `Search scope: ${input.scopeValues.join(", ")}.`
+	);
 }
 
 function formatSearchOutput<TScope extends string>(
@@ -139,9 +140,10 @@ export function createSearchTool<TIndex, TScope extends string>(input: {
 				);
 				return output;
 			} catch (error: unknown) {
-				const message = input.failureLabel == null
-					? formatErrorMessage("Invalid search query", error)
-					: formatErrorMessage(input.failureLabel, error);
+				const message =
+					input.failureLabel == null
+						? formatErrorMessage("Invalid search query", error)
+						: formatErrorMessage(input.failureLabel, error);
 				await input.sendNotification(
 					context.sessionID,
 					buildNotification(input.notificationTitle, message),

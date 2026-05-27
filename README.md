@@ -201,7 +201,7 @@ The generated plugin also registers `permission.ask` for the resolved cache dire
 
 ## Runtime Context
 
-`extraTools(runtime)` and `extendStatus(runtime)` receive a `GitCacheRuntimeContext`.
+`extraTools(runtime)` and `extendStatus(runtime)` receive a `GitCachePluginContext`.
 
 Useful properties and methods:
 
@@ -243,36 +243,14 @@ Typical downstream uses:
 
 ## Key Exports
 
-High-level exports:
+Public root exports:
 
 - `defineGitCacheSpec`
 - `createGitCachePlugin`
 - `buildGitCacheSearchIndex`
 - `searchGitCacheIndex`
 
-State helpers:
-
-- `createInitialGitCacheState`
-- `loadGitCacheState`
-- `readGitCacheState`
-- `writeGitCacheState`
-- `getGitCacheFreshness`
-
-Path helpers:
-
-- `getGitSourceDir`
-- `getGitArtifactDir`
-- `getGitArtifactReadinessPath`
-- `getGitSectionBaseDir`
-- `getGitCacheIndexPath`
-
-Tool helpers:
-
-- `createStatusTool`
-- `createSearchTool`
-- `createPermissionHandler`
-- `buildNotification`
-- `createNotificationSender`
+The package keeps lower-level helpers internal. Package tests import implementation files directly, but downstream packages should use the root plugin API only.
 
 ## Validation
 

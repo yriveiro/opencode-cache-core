@@ -1,59 +1,59 @@
 {
-  "name": "@yriveiro/opencode-cache-core",
-  "version": "0.3.1",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "src/index.ts",
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "description": "Git-first cache runtime and search utilities for OpenCode plugins",
-  "author": "yriveiro",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yriveiro/opencode-cache-core.git"
-  },
-  "homepage": "https://github.com/yriveiro/opencode-cache-core#readme",
-  "bugs": {
-    "url": "https://github.com/yriveiro/opencode-cache-core/issues"
-  },
-  "keywords": [
-    "opencode",
-    "cache",
-    "search",
-    "git"
-  ],
-  "files": [
-    "src",
-    "dist"
-  ],
-  "peerDependencies": {
-    "@opencode-ai/plugin": "^1.3.17",
-    "zod": "^4.1.8"
-  },
-  "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun",
-    "clean": "rm -rf dist node_modules bun.lock",
-    "typecheck": "tsc --noEmit",
-    "prepublishOnly": "bun run typecheck && bun run build",
-    "test": "bun test",
-    "test:watch": "bun test --watch",
-    "format": "biome format --write .",
-    "lint": "biome lint .",
-    "check": "biome check ."
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.12",
-    "@tailwindcss/cli": "^4.2.2",
-    "@types/node": "^22.19.17",
-    "bun-types": "^1.3.12",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^5.9.3",
-    "zod": "^4.3.6"
-  }
+	"name": "@yriveiro/opencode-cache-core",
+	"version": "0.4.0",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"description": "Git-first cache runtime and search utilities for OpenCode plugins",
+	"author": "yriveiro",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/yriveiro/opencode-cache-core.git"
+	},
+	"homepage": "https://github.com/yriveiro/opencode-cache-core#readme",
+	"bugs": {
+		"url": "https://github.com/yriveiro/opencode-cache-core/issues"
+	},
+	"keywords": [
+		"opencode",
+		"cache",
+		"search",
+		"git"
+	],
+	"files": [
+		"src",
+		"dist"
+	],
+	"peerDependencies": {
+		"@opencode-ai/plugin": "^1.3.17",
+		"zod": "^4.1.8"
+	},
+	"scripts": {
+		"build": "bun build src/index.ts --outdir dist --target bun",
+		"clean": "rm -rf dist node_modules bun.lock",
+		"typecheck": "tsc --noEmit",
+		"prepublishOnly": "bun run typecheck && bun run build",
+		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"format": "biome format --write src tests package.json README.md docs/index.html",
+		"lint": "biome lint src tests package.json README.md docs/index.html",
+		"check": "biome check src tests package.json README.md docs/index.html"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.12",
+		"@tailwindcss/cli": "^4.2.2",
+		"@types/node": "^22.19.17",
+		"bun-types": "^1.3.12",
+		"tailwindcss": "^4.2.2",
+		"typescript": "^5.9.3",
+		"zod": "^4.3.6"
+	}
 }

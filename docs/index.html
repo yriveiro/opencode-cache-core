@@ -904,8 +904,8 @@ footer a:hover {
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>src/index.ts</code> is the package entrypoint. A downstream plugin usually imports <code>defineGitCacheSpec()</code> and <code>createGitCachePlugin()</code>, then optionally uses lower-level helpers for custom status lines or package-specific tools.</p>
-                <p>The runtime implementation lives in <code>src/git-cache-plugin.ts</code>, while the rest of the package is split into spec, state, path, search, and notification helpers.</p>
+                <p><code>src/index.ts</code> is the plugin-facing package entrypoint. A downstream plugin usually imports <code>defineGitCacheSpec()</code> and <code>createGitCachePlugin()</code>.</p>
+                <p>The package does not expose a low-level subpath. Package tests import implementation files directly when they need lower-level helpers.</p>
                 <ul>
                   <li>Use <code>defineGitCacheSpec()</code> to validate the cache contract.</li>
                   <li>Use <code>createGitCachePlugin()</code> to publish the generated OpenCode plugin.</li>
@@ -918,7 +918,7 @@ footer a:hover {
                     <span class="filename">src/index.ts</span>
                     <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">export {
+                   <pre><code class="language-ts">export {
   ALL_SCOPE,
   type Index,
   type PermissionRequest,
@@ -928,19 +928,14 @@ footer a:hover {
   type Section,
   type SectionDefinition,
 } from "./types";
-export { buildIndex } from "./indexing";
-export { pathExists, readIndex, writeIndex } from "./storage";
-export { searchIndex } from "./search";
 export {
-  type CommandResult,
   DEFAULT_GIT_CACHE_MAX_AGE_SECONDS,
   buildGitCacheSearchIndex,
   createGitCachePlugin,
-  formatCommandFailure,
   formatGitCacheIndexCounts,
   searchGitCacheIndex,
   type GitCachePluginOptions,
-  type GitCacheRuntimeContext,
+  type GitCachePluginContext,
 } from "./git-cache-plugin";</code></pre>
                 </div>
               </div>
@@ -969,7 +964,13 @@ export {
               <table class="doc-table">
                 <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
                 <tbody>
-                  <tr><td><code>src/index.ts</code></td><td>Named-export public entrypoint for the Git-first core surface.</td></tr>
+                  <tr><td><code>src/index.ts</code></td><td>Public plugin-facing entrypoint.</td></tr>
+                  <tr><td><code>src/git-cache-plugin.ts</code></td><td>Runtime implementation, plugin assembly, and cache lifecycle helpers.</td></tr>
+                  <tr><td><code>src/git-cache-paths.ts</code></td><td>Path resolution helpers used internally by the runtime.</td></tr>
+                  <tr><td><code>src/git-cache-state.ts</code></td><td>State manifest, freshness, and persistence helpers used internally by the runtime.</td></tr>
+                  <tr><td><code>src/permissions.ts</code></td><td>Permission hook helper used internally by the runtime.</td></tr>
+                  <tr><td><code>src/notifications.ts</code></td><td>Notification helper used internally by the runtime.</td></tr>
+                  <tr><td><code>src/tools.ts</code></td><td>Search/status tool assembly used internally by the runtime.</td></tr>
                   <tr><td><code>src/git-cache-schema.ts</code></td><td>Zod-backed Git cache spec, custom validation rules, and ready-source resolution.</td></tr>
                   <tr><td><code>src/git-cache-paths.ts</code></td><td>Resolves source, artifact, readiness, and section base directories from the spec.</td></tr>
                   <tr><td><code>src/git-cache-state.ts</code></td><td>Defines the persisted state manifest and freshness calculation helpers.</td></tr>
@@ -1015,7 +1016,7 @@ export {
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The cache spec describes everything the runtime needs: where to clone repositories, where artifacts live, which directories are indexed for search, and what names/descriptions the generated tools should use.</p>
+                <p>The cache spec is the contract for the plugin-facing API. It describes where to clone repositories, where artifacts live, which directories are indexed for search, and what names/descriptions the generated tools should use.</p>
                 <p>The schema also verifies internal references so artifacts and sections always point at real source or artifact IDs.</p>
               </div>
               <div>
@@ -1065,8 +1066,8 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>buildGitCacheSearchIndex()</code> resolves each section to a concrete base directory. <code>buildIndex()</code> scans that directory with the section's patterns and stores the matched relative file paths.</p>
-                <p>Each section becomes one search scope in the generated search tool.</p>
+                <p><code>buildGitCacheSearchIndex()</code> resolves each section to a concrete base directory. The lower-level <code>buildIndex()</code> helper stays internal and scans those directories with the section's patterns.</p>
+                <p>Each section becomes one search scope in the generated search tool, but only the plugin-facing API is exported from the root.</p>
                 <aside class="callout">
                   <h3>Example</h3>
                   <p>A plugin can expose one section for markdown docs in the repository and another section for generated HTML in an artifact directory.</p>
@@ -1123,11 +1124,11 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
                     <span class="filename">src/git-cache-plugin.ts</span>
                     <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">function createRuntimeContext&lt;TScope extends string&gt;(input: {...}): GitCacheRuntimeContext&lt;TScope&gt; {
+                  <pre><code class="language-ts">function createPluginContext&lt;TScope extends string&gt;(input: {...}): GitCachePluginContext&lt;TScope&gt; {
+  const lookups = getGitCacheLookups(input.spec);
   const indexFile = getGitCacheIndexPath(input.cacheDir);
   const stateFile = getGitCacheStateFile(input.cacheDir);
-  const scopes = getGitCacheScopes(input.spec);
-  const readySourceId = resolveReadySourceId(input.spec);
+  const readySourceId = lookups.readySourceId;
 
   const readState = async (): Promise&lt;GitCacheState&gt; =&gt; {
     return loadGitCacheState(input.spec, input.cacheDir, {...});
@@ -1149,7 +1150,7 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
     }
 
     const storedIndex = await readIndex&lt;Index&lt;TScope&gt;&gt;(indexFile);
-    return isIndexForScopes(storedIndex, scopes) ? storedIndex : refreshIndex();
+    return isIndexForScopes(storedIndex, [...lookups.sectionsByScope.keys()]) ? storedIndex : refreshIndex();
   };
 
   return { ... };
@@ -1258,8 +1259,8 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>resolveGitCacheDir()</code>, <code>getGitSourceDir()</code>, <code>getGitArtifactDir()</code>, and <code>getGitSectionBaseDir()</code> turn the logical spec into concrete on-disk paths.</p>
-                <p>These helpers are useful both inside the runtime and in downstream package-specific tools.</p>
+                <p><code>resolveGitCacheDir()</code> now resolves to <code>~/.cache/opencode/plugins/cache-core/&lt;spec.defaultCacheSubdir&gt;</code> when no override is set.</p>
+                <p>Path helpers and storage helpers are internal implementation details; downstream code should use the higher-level plugin APIs unless it has a concrete need for the lower-level building blocks.</p>
               </div>
               <div>
                 <div class="code-content">
@@ -1421,7 +1422,7 @@ export function resolveReadySourceId&lt;TScope extends string&gt;(
             <div class="doc-row">
               <div class="doc-content">
                 <p>The generated search tool accepts a query and optional scope/filter flags, loads the persisted index on demand, and formats each hit as <code>[scope] file:line: excerpt</code>.</p>
-                <p>The lower-level helper still returns structured search results, so downstream code can use the same search engine without the formatted tool output.</p>
+                <p>The lower-level helper returns structured search results for the package's own internals.</p>
               </div>
               <div>
                 <div class="code-content">
@@ -1494,7 +1495,7 @@ export function resolveReadySourceId&lt;TScope extends string&gt;(
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>buildNotification()</code> builds a prompt-style message shared by all generated tools, and <code>createNotificationSender()</code> pushes that message into the active session with <code>noReply</code> enabled.</p>
+                <p><code>buildNotification()</code> builds a prompt-style message shared by all generated tools, and <code>createNotificationSender()</code> pushes that message into the active session with <code>noReply</code> enabled. These are internal helpers, not part of the narrow root API.</p>
                 <p>If notification delivery fails, the runtime falls back to debug logging instead of breaking the tool result itself.</p>
               </div>
               <div>
@@ -1550,8 +1551,8 @@ export function createNotificationSender(input: {
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p><code>src/index.ts</code> is where a downstream plugin starts. It re-exports the spec builder, runtime builder, state helpers, path helpers, and search helpers.</p>
-                <p>A plugin can stay at the high level with <code>createGitCachePlugin()</code> or drop to lower-level helpers when it needs custom build steps.</p>
+                <p><code>src/index.ts</code> is the plugin-facing entrypoint. It exposes the runtime plugin and spec types.</p>
+                <p>Low-level helpers are internal implementation details and are imported directly by package tests only.</p>
               </div>
               <div>
                 <div class="code-content">
@@ -1559,22 +1560,35 @@ export function createNotificationSender(input: {
                     <span class="filename">src/index.ts</span>
                     <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">export { buildIndex } from "./indexing";
-export { pathExists, readIndex, writeIndex } from "./storage";
-export { searchIndex } from "./search";
+                   <pre><code class="language-ts">export {
+  ALL_SCOPE,
+  type Index,
+  type PermissionRequest,
+  type SearchHit,
+  type SearchOptions,
+  type SearchResult,
+  type Section,
+  type SectionDefinition,
+} from "./types";
 export {
   DEFAULT_GIT_CACHE_MAX_AGE_SECONDS,
   buildGitCacheSearchIndex,
   createGitCachePlugin,
-  formatCommandFailure,
   formatGitCacheIndexCounts,
   searchGitCacheIndex,
+  type GitCachePluginOptions,
+  type GitCachePluginContext,
 } from "./git-cache-plugin";
 export {
   defineGitCacheSpec,
-  getGitCacheScopes,
-  resolveReadySourceId,
-  GitCacheSpecSchema,
+  type GitCacheArtifactSpec,
+  type GitCacheSearchToolConfig,
+  type GitCacheSectionRoot,
+  type GitCacheSectionSpec,
+  type GitCacheSourceSpec,
+  type GitCacheSpec,
+  type GitCacheToolConfig,
+  type GitCacheUpdateToolConfig,
 } from "./git-cache-schema";</code></pre>
                 </div>
               </div>
@@ -1641,10 +1655,10 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
                     <span class="filename">src/git-cache-plugin.ts</span>
                     <span class="lines">Excerpts</span>
                   </div>
-                  <pre><code class="language-ts">const indexFile = getGitCacheIndexPath(input.cacheDir);
+                  <pre><code class="language-ts">const lookups = getGitCacheLookups(input.spec);
+const indexFile = getGitCacheIndexPath(input.cacheDir);
 const stateFile = getGitCacheStateFile(input.cacheDir);
-const scopes = getGitCacheScopes(input.spec);
-const readySourceId = resolveReadySourceId(input.spec);
+const readySourceId = lookups.readySourceId;
 
 const refreshIndex = async (): Promise&lt;Index&lt;TScope&gt;&gt; =&gt; {
   const index = await buildGitCacheSearchIndex(input.spec, input.cacheDir);

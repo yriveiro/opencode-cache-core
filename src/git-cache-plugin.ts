@@ -3,33 +3,34 @@ import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { tool, type Hooks, type Plugin, type ToolDefinition } from "@opencode-ai/plugin";
-
-import { buildIndex } from "./indexing";
 import {
-	defineGitCacheSpec,
-	getGitCacheScopes,
-	resolveReadySourceId,
-	type GitCacheSourceSpec,
-	type GitCacheSpec,
-} from "./git-cache-schema";
+	type Hooks,
+	type Plugin,
+	type ToolDefinition,
+	tool,
+} from "@opencode-ai/plugin";
+import { getGitCacheLookups } from "./git-cache-lookups";
 import {
 	getGitArtifactDir,
 	getGitArtifactReadinessPath,
 	getGitCacheIndexPath,
-	getGitSectionBaseDir,
 	getGitSourceDir,
 	getGitSourceDirectoryName,
 } from "./git-cache-paths";
 import {
-	createInitialGitCacheState,
+	defineGitCacheSpec,
+	type GitCacheSourceSpec,
+	type GitCacheSpec,
+	getGitCacheScopes,
+} from "./git-cache-schema";
+import {
+	type GitCacheState,
 	getGitCacheFreshness,
 	getGitCacheStateFile,
 	loadGitCacheState,
-	type GitCacheArtifactState,
-	type GitCacheState,
 	writeGitCacheState,
 } from "./git-cache-state";
+import { buildIndex } from "./indexing";
 import { buildNotification, createNotificationSender } from "./notifications";
 import { createPermissionHandler } from "./permissions";
 import { searchIndex } from "./search";
@@ -64,7 +65,9 @@ async function logInitialization(input: {
 	});
 }
 
-function createEmptyArtifactState(directory: string): GitCacheArtifactState {
+function createEmptyArtifactState(
+	directory: string,
+): GitCacheState["artifacts"][string] {
 	return {
 		directory,
 		builtAt: null,
@@ -73,7 +76,9 @@ function createEmptyArtifactState(directory: string): GitCacheArtifactState {
 	};
 }
 
-function getSparseEntries(source: Pick<GitCacheSourceSpec, "sparse">): string[] {
+function getSparseEntries(
+	source: Pick<GitCacheSourceSpec, "sparse">,
+): string[] {
 	return source.sparse == null ? [] : [...source.sparse];
 }
 
@@ -87,10 +92,20 @@ function resolveGitCacheDir(
 		return configuredCacheDir;
 	}
 
-	return join(homeDirectory, ".cache", "opencode", "plugins", "cache-core", defaultCacheSubdir);
+	return join(
+		homeDirectory,
+		".cache",
+		"opencode",
+		"plugins",
+		"cache-core",
+		defaultCacheSubdir,
+	);
 }
 
-export function formatCommandFailure(title: string, result: CommandResult): string {
+export function formatCommandFailure(
+	title: string,
+	result: CommandResult,
+): string {
 	const details = [result.stdout, result.stderr]
 		.filter((value) => value.length > 0)
 		.join("\n");
@@ -159,10 +174,16 @@ async function syncGitSource(
 				sourceDir,
 			]);
 			if (result.exitCode !== 0) {
-				throw new Error(formatCommandFailure(`Failed to clone ${sourceName}.`, result));
+				throw new Error(
+					formatCommandFailure(`Failed to clone ${sourceName}.`, result),
+				);
 			}
 
-			result = await runCommand("git", ["sparse-checkout", "init", "--cone"], sourceDir);
+			result = await runCommand(
+				"git",
+				["sparse-checkout", "init", "--cone"],
+				sourceDir,
+			);
 			if (result.exitCode !== 0) {
 				throw new Error(
 					formatCommandFailure(
@@ -203,7 +224,9 @@ async function syncGitSource(
 				sourceDir,
 			]);
 			if (result.exitCode !== 0) {
-				throw new Error(formatCommandFailure(`Failed to clone ${sourceName}.`, result));
+				throw new Error(
+					formatCommandFailure(`Failed to clone ${sourceName}.`, result),
+				);
 			}
 		}
 
@@ -219,7 +242,9 @@ async function syncGitSource(
 		sourceDir,
 	);
 	if (result.exitCode !== 0) {
-		throw new Error(formatCommandFailure(`Failed to fetch ${sourceName}.`, result));
+		throw new Error(
+			formatCommandFailure(`Failed to fetch ${sourceName}.`, result),
+		);
 	}
 
 	result = await runCommand(
@@ -228,7 +253,9 @@ async function syncGitSource(
 		sourceDir,
 	);
 	if (result.exitCode !== 0) {
-		throw new Error(formatCommandFailure(`Failed to reset ${sourceName}.`, result));
+		throw new Error(
+			formatCommandFailure(`Failed to reset ${sourceName}.`, result),
+		);
 	}
 
 	if (source.sparse != null) {
@@ -252,8 +279,14 @@ async function syncGitSource(
 }
 
 async function readGitRevision(directory: string): Promise<string | null> {
-	const result = await runCommand("git", ["rev-parse", "--short", "HEAD"], directory);
-	return result.exitCode === 0 && result.stdout.length > 0 ? result.stdout : null;
+	const result = await runCommand(
+		"git",
+		["rev-parse", "--short", "HEAD"],
+		directory,
+	);
+	return result.exitCode === 0 && result.stdout.length > 0
+		? result.stdout
+		: null;
 }
 
 function isIndexForScopes<TScope extends string>(
@@ -288,12 +321,24 @@ export async function buildGitCacheSearchIndex<TScope extends string>(
 	spec: GitCacheSpec<TScope>,
 	cacheDir: string,
 ): Promise<Index<TScope>> {
-	const sections = {} as Record<TScope, { baseDir: string; patterns: readonly string[] }>;
+	const lookups = getGitCacheLookups(spec);
+	const sections = {} as Record<
+		TScope,
+		{ baseDir: string; patterns: readonly string[] }
+	>;
 
 	for (const scope of getGitCacheScopes(spec)) {
+		const section = lookups.sectionsByScope.get(scope);
+		if (section == null) {
+			throw new Error(`Unknown section '${String(scope)}'.`);
+		}
+
 		sections[scope] = {
-			baseDir: getGitSectionBaseDir(spec, cacheDir, scope),
-			patterns: spec.sections[scope].patterns,
+			baseDir:
+				section.root.kind === "source"
+					? getGitSourceDir(spec, cacheDir, section.root.id)
+					: getGitArtifactDir(spec, cacheDir, section.root.id),
+			patterns: section.patterns,
 		};
 	}
 
@@ -320,12 +365,18 @@ export function formatGitCacheIndexCounts<TScope extends string>(
 	spec: GitCacheSpec<TScope>,
 	index: Index<TScope>,
 ): string[] {
+	const lookups = getGitCacheLookups(spec);
 	return getGitCacheScopes(spec).map((scope) => {
-		return `${spec.sections[scope].label} files: ${index.sections[scope].files.length}`;
+		const section = lookups.sectionsByScope.get(scope);
+		if (section == null) {
+			throw new Error(`Unknown section '${String(scope)}'.`);
+		}
+
+		return `${section.label} files: ${index.sections[scope].files.length}`;
 	});
 }
 
-export interface GitCacheRuntimeContext<TScope extends string> {
+export interface GitCachePluginContext<TScope extends string> {
 	client: Parameters<Plugin>[0]["client"];
 	spec: GitCacheSpec<TScope>;
 	cacheDir: string;
@@ -334,7 +385,10 @@ export interface GitCacheRuntimeContext<TScope extends string> {
 	maxAgeSeconds: number;
 	buildNotification(output: string): string;
 	notify(sessionID: string, output: string): Promise<void>;
-	log(message: string, level?: "debug" | "error" | "info" | "warn"): Promise<void>;
+	log(
+		message: string,
+		level?: "debug" | "error" | "info" | "warn",
+	): Promise<void>;
 	getSourceDir(sourceId: string): string;
 	getArtifactDir(artifactId: string): string;
 	getArtifactReadinessPath(artifactId: string): string;
@@ -355,26 +409,33 @@ export interface GitCacheRuntimeContext<TScope extends string> {
 export interface GitCachePluginOptions<TScope extends string> {
 	spec: GitCacheSpec<TScope>;
 	maxAgeSeconds?: number;
-	extendStatus?: (context: GitCacheRuntimeContext<TScope>) => Promise<readonly string[]>;
-	extraTools?: (context: GitCacheRuntimeContext<TScope>) => Record<string, ToolDefinition>;
+	extendStatus?: (
+		context: GitCachePluginContext<TScope>,
+	) => Promise<readonly string[]>;
+	extraTools?: (
+		context: GitCachePluginContext<TScope>,
+	) => Record<string, ToolDefinition>;
 }
 
-function createRuntimeContext<TScope extends string>(input: {
+function createPluginContext<TScope extends string>(input: {
 	client: Parameters<Plugin>[0]["client"];
 	spec: GitCacheSpec<TScope>;
 	cacheDir: string;
 	sendNotification: (sessionID: string, message: string) => Promise<void>;
 	maxAgeSeconds: number;
-}): GitCacheRuntimeContext<TScope> {
+}): GitCachePluginContext<TScope> {
+	const lookups = getGitCacheLookups(input.spec);
 	const indexFile = getGitCacheIndexPath(input.cacheDir);
 	const stateFile = getGitCacheStateFile(input.cacheDir);
+	const readySourceId = lookups.readySourceId;
 	const scopes = getGitCacheScopes(input.spec);
-	const readySourceId = resolveReadySourceId(input.spec);
 
 	const readState = async (): Promise<GitCacheState> => {
 		return loadGitCacheState(input.spec, input.cacheDir, {
-			getSourceDir: (sourceId) => getGitSourceDir(input.spec, input.cacheDir, sourceId),
-			getArtifactDir: (artifactId) => getGitArtifactDir(input.spec, input.cacheDir, artifactId),
+			getSourceDir: (sourceId) =>
+				getGitSourceDir(input.spec, input.cacheDir, sourceId),
+			getArtifactDir: (artifactId) =>
+				getGitArtifactDir(input.spec, input.cacheDir, artifactId),
 		});
 	};
 
@@ -402,7 +463,14 @@ function createRuntimeContext<TScope extends string>(input: {
 	};
 
 	const loadIndex = async (): Promise<Index<TScope> | null> => {
-		if (!(await pathExists(join(getGitSourceDir(input.spec, input.cacheDir, readySourceId), ".git")))) {
+		if (
+			!(await pathExists(
+				join(
+					getGitSourceDir(input.spec, input.cacheDir, readySourceId),
+					".git",
+				),
+			))
+		) {
 			return null;
 		}
 
@@ -417,28 +485,31 @@ function createRuntimeContext<TScope extends string>(input: {
 
 		for (const source of input.spec.sources) {
 			const sourceDir = getGitSourceDir(input.spec, input.cacheDir, source.id);
+			const previousState = state.sources[source.id];
+			let revision = previousState?.revision ?? null;
+			let syncedAt = previousState?.syncedAt ?? null;
+			let ready = previousState?.ready ?? false;
+			let message = previousState?.message ?? null;
 
 			try {
 				lines.push(...(await syncGitSource(sourceDir, source)));
-				const revision = await readGitRevision(sourceDir);
-				state.sources[source.id] = {
-					directory: sourceDir,
-					revision,
-					syncedAt: now,
-					ready: await pathExists(join(sourceDir, ".git")),
-					message: null,
-				};
+				revision = await readGitRevision(sourceDir);
+				syncedAt = now;
+				message = null;
 			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : String(error);
-				state.sources[source.id] = {
-					directory: sourceDir,
-					revision: await readGitRevision(sourceDir),
-					syncedAt: state.sources[source.id]?.syncedAt ?? null,
-					ready: await pathExists(join(sourceDir, ".git")),
-					message,
-				};
+				message = error instanceof Error ? error.message : String(error);
+				revision = await readGitRevision(sourceDir);
 				lines.push(`  Error with ${source.id}: ${message}`);
 			}
+
+			ready = await pathExists(join(sourceDir, ".git"));
+			state.sources[source.id] = {
+				directory: sourceDir,
+				revision,
+				syncedAt,
+				ready,
+				message,
+			};
 		}
 
 		state.updatedAt = now;
@@ -458,7 +529,10 @@ function createRuntimeContext<TScope extends string>(input: {
 			return buildNotification(input.spec.title, output);
 		},
 		async notify(sessionID: string, output: string): Promise<void> {
-			await input.sendNotification(sessionID, buildNotification(input.spec.title, output));
+			await input.sendNotification(
+				sessionID,
+				buildNotification(input.spec.title, output),
+			);
 		},
 		async log(
 			message: string,
@@ -479,16 +553,26 @@ function createRuntimeContext<TScope extends string>(input: {
 			return getGitArtifactDir(input.spec, input.cacheDir, artifactId);
 		},
 		getArtifactReadinessPath(artifactId: string): string {
-			return getGitArtifactReadinessPath(input.spec, input.cacheDir, artifactId);
+			return getGitArtifactReadinessPath(
+				input.spec,
+				input.cacheDir,
+				artifactId,
+			);
 		},
 		async isSourceReady(sourceId: string): Promise<boolean> {
-			return pathExists(join(getGitSourceDir(input.spec, input.cacheDir, sourceId), ".git"));
+			return pathExists(
+				join(getGitSourceDir(input.spec, input.cacheDir, sourceId), ".git"),
+			);
 		},
 		async isArtifactReady(artifactId: string): Promise<boolean> {
-			return pathExists(getGitArtifactReadinessPath(input.spec, input.cacheDir, artifactId));
+			return pathExists(
+				getGitArtifactReadinessPath(input.spec, input.cacheDir, artifactId),
+			);
 		},
 		async getSourceRevision(sourceId: string): Promise<string | null> {
-			return readGitRevision(getGitSourceDir(input.spec, input.cacheDir, sourceId));
+			return readGitRevision(
+				getGitSourceDir(input.spec, input.cacheDir, sourceId),
+			);
 		},
 		readState,
 		writeState,
@@ -510,15 +594,19 @@ function buildSourceRepositoryLines<TScope extends string>(
 ): string[] {
 	const lines = ["Sources:"];
 	for (const source of spec.sources) {
-		const sourceState = state.sources[source.id]
-			?? createInitialGitCacheState(spec, state.cacheDir, {
-				getSourceDir: (sourceId) => getGitSourceDir(spec, state.cacheDir, sourceId),
-				getArtifactDir: (artifactId) => getGitArtifactDir(spec, state.cacheDir, artifactId),
-			}).sources[source.id];
+		const sourceState = state.sources[source.id] ?? {
+			directory: getGitSourceDir(spec, state.cacheDir, source.id),
+			revision: null,
+			syncedAt: null,
+			ready: false,
+			message: null,
+		};
 		const label = source.label ?? source.id;
 		const revision = sourceState.revision ?? "unknown";
 		const syncedAt = sourceState.syncedAt ?? "never";
-		lines.push(`  ${label}: ${sourceState.ready ? "ready" : "missing"} (${revision}, synced ${syncedAt})`);
+		lines.push(
+			`  ${label}: ${sourceState.ready ? "ready" : "missing"} (${revision}, synced ${syncedAt})`,
+		);
 		if (sourceState.message != null) {
 			lines.push(`    ${sourceState.message}`);
 		}
@@ -537,11 +625,16 @@ function buildArtifactLines<TScope extends string>(
 
 	const lines = ["Artifacts:"];
 	for (const artifact of artifacts) {
-		const artifactState = state.artifacts[artifact.id]
-			?? createEmptyArtifactState(getGitArtifactDir(spec, state.cacheDir, artifact.id));
+		const artifactState =
+			state.artifacts[artifact.id] ??
+			createEmptyArtifactState(
+				getGitArtifactDir(spec, state.cacheDir, artifact.id),
+			);
 		const label = artifact.label ?? artifact.id;
 		const builtAt = artifactState.builtAt ?? "never";
-		lines.push(`  ${label}: ${artifactState.ready ? "ready" : "missing"} (built ${builtAt})`);
+		lines.push(
+			`  ${label}: ${artifactState.ready ? "ready" : "missing"} (built ${builtAt})`,
+		);
 		if (artifactState.message != null) {
 			lines.push(`    ${artifactState.message}`);
 		}
@@ -554,12 +647,13 @@ export function createGitCachePlugin<TScope extends string>(
 ): Plugin {
 	return async ({ client }) => {
 		const spec = defineGitCacheSpec(input.spec);
+		const lookups = getGitCacheLookups(spec);
 		const cacheDir = resolveGitCacheDir(spec.envVar, spec.defaultCacheSubdir);
 		const sendNotification = createNotificationSender({
 			client,
 			service: spec.service,
 		});
-		const runtime = createRuntimeContext({
+		const runtime = createPluginContext({
 			client,
 			spec,
 			cacheDir,
@@ -572,18 +666,29 @@ export function createGitCachePlugin<TScope extends string>(
 			[spec.updateTool.name]: tool({
 				description: spec.updateTool.description,
 				args: {
-					force: tool.schema.boolean().optional().describe("Force refresh even when the cache is fresh."),
+					force: tool.schema
+						.boolean()
+						.optional()
+						.describe("Force refresh even when the cache is fresh."),
 				},
 				async execute(args, context) {
 					try {
 						await mkdir(runtime.cacheDir, { recursive: true });
 
 						const state = await runtime.readState();
-						const freshness = getGitCacheFreshness(state.updatedAt, runtime.maxAgeSeconds);
-						const readySourceId = resolveReadySourceId(spec);
+						const freshness = getGitCacheFreshness(
+							state.updatedAt,
+							runtime.maxAgeSeconds,
+						);
+						const readySourceId = lookups.readySourceId;
 
-						if (!args.force && (await runtime.isSourceReady(readySourceId)) && freshness.fresh) {
-							const index = (await runtime.loadIndex()) ?? (await runtime.refreshIndex());
+						if (
+							!args.force &&
+							(await runtime.isSourceReady(readySourceId)) &&
+							freshness.fresh
+						) {
+							const index =
+								(await runtime.loadIndex()) ?? (await runtime.refreshIndex());
 							const message = [
 								`Cache is fresh (${freshness.hoursAgo}h old).`,
 								`Cache directory: ${runtime.cacheDir}`,
@@ -605,7 +710,10 @@ export function createGitCachePlugin<TScope extends string>(
 						await runtime.log(spec.updateTool.successLogMessage);
 						return output;
 					} catch (error: unknown) {
-						const message = formatErrorMessage(spec.updateTool.failureLabel, error);
+						const message = formatErrorMessage(
+							spec.updateTool.failureLabel,
+							error,
+						);
 						await runtime.notify(context.sessionID, message);
 						return message;
 					}
@@ -618,7 +726,10 @@ export function createGitCachePlugin<TScope extends string>(
 				buildOutput: async () => {
 					const state = await runtime.readState();
 					const index = await runtime.loadIndex();
-					const freshness = getGitCacheFreshness(state.updatedAt, runtime.maxAgeSeconds);
+					const freshness = getGitCacheFreshness(
+						state.updatedAt,
+						runtime.maxAgeSeconds,
+					);
 					const lines = [
 						`Cache directory: ${runtime.cacheDir}`,
 						`State file: ${runtime.stateFile}`,
@@ -628,8 +739,12 @@ export function createGitCachePlugin<TScope extends string>(
 					if (freshness.timestamp == null) {
 						lines.push("Cache status: not initialized");
 					} else {
-						lines.push(`Cache status: ${freshness.fresh ? "fresh" : "stale"} (${freshness.hoursAgo}h old)`);
-						lines.push(`Last update: ${new Date(freshness.timestamp * 1000).toISOString()}`);
+						lines.push(
+							`Cache status: ${freshness.fresh ? "fresh" : "stale"} (${freshness.hoursAgo}h old)`,
+						);
+						lines.push(
+							`Last update: ${new Date(freshness.timestamp * 1000).toISOString()}`,
+						);
 					}
 
 					lines.push("");

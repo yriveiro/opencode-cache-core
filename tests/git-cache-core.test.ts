@@ -2,21 +2,24 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
 import {
-	ALL_SCOPE,
-	buildGitCacheSearchIndex,
-	createPermissionHandler,
-	defineGitCacheSpec,
-	formatCommandFailure,
 	getGitArtifactDir,
 	getGitArtifactReadinessPath,
-	getGitCacheFreshness,
 	getGitSectionBaseDir,
 	getGitSourceDir,
-	resolveReadySourceId,
+} from "../src/git-cache-paths";
+import {
+	buildGitCacheSearchIndex,
+	formatCommandFailure,
 	searchGitCacheIndex,
-} from "../src/index";
+} from "../src/git-cache-plugin";
+import {
+	defineGitCacheSpec,
+	resolveReadySourceId,
+} from "../src/git-cache-schema";
+import { getGitCacheFreshness } from "../src/git-cache-state";
+import { createPermissionHandler } from "../src/permissions";
+import { ALL_SCOPE } from "../src/types";
 
 const tempDirs: string[] = [];
 
@@ -115,8 +118,16 @@ describe("defineGitCacheSpec", () => {
 					failureLabel: "Failed to search broken cache",
 				},
 				sources: [
-					{ id: "repo", url: "https://github.com/example/repo-a.git", branch: "main" },
-					{ id: "repo", url: "https://github.com/example/repo-b.git", branch: "main" },
+					{
+						id: "repo",
+						url: "https://github.com/example/repo-a.git",
+						branch: "main",
+					},
+					{
+						id: "repo",
+						url: "https://github.com/example/repo-b.git",
+						branch: "main",
+					},
 				],
 				sections: {
 					docs: {
@@ -155,8 +166,17 @@ describe("defineGitCacheSpec", () => {
 			},
 			readySource: "secondary",
 			sources: [
-				{ id: "primary", url: "https://github.com/example/primary.git", branch: "main", ready: true },
-				{ id: "secondary", url: "https://github.com/example/secondary.git", branch: "main" },
+				{
+					id: "primary",
+					url: "https://github.com/example/primary.git",
+					branch: "main",
+					ready: true,
+				},
+				{
+					id: "secondary",
+					url: "https://github.com/example/secondary.git",
+					branch: "main",
+				},
 			],
 			sections: {
 				docs: {
@@ -175,12 +195,18 @@ describe("path helpers", () => {
 	test("resolve source, artifact, readiness, and section paths", async () => {
 		const cacheDir = await createTempCacheDir();
 
-		expect(getGitSourceDir(TEST_SPEC, cacheDir, "repo")).toBe(join(cacheDir, "source"));
-		expect(getGitArtifactDir(TEST_SPEC, cacheDir, "site")).toBe(join(cacheDir, "source", "build"));
+		expect(getGitSourceDir(TEST_SPEC, cacheDir, "repo")).toBe(
+			join(cacheDir, "source"),
+		);
+		expect(getGitArtifactDir(TEST_SPEC, cacheDir, "site")).toBe(
+			join(cacheDir, "source", "build"),
+		);
 		expect(getGitArtifactReadinessPath(TEST_SPEC, cacheDir, "site")).toBe(
 			join(cacheDir, "source", "build", "index.html"),
 		);
-		expect(getGitSectionBaseDir(TEST_SPEC, cacheDir, "docs")).toBe(join(cacheDir, "source"));
+		expect(getGitSectionBaseDir(TEST_SPEC, cacheDir, "docs")).toBe(
+			join(cacheDir, "source"),
+		);
 		expect(getGitSectionBaseDir(TEST_SPEC, cacheDir, "built")).toBe(
 			join(cacheDir, "source", "build"),
 		);
@@ -221,8 +247,16 @@ describe("search index", () => {
 
 		await mkdir(docsDir, { recursive: true });
 		await mkdir(buildDir, { recursive: true });
-		await writeFile(join(docsDir, "guide.md"), "# Intro\nNeedle docs\n", "utf8");
-		await writeFile(join(buildDir, "index.html"), "<html>Needle built</html>\n", "utf8");
+		await writeFile(
+			join(docsDir, "guide.md"),
+			"# Intro\nNeedle docs\n",
+			"utf8",
+		);
+		await writeFile(
+			join(buildDir, "index.html"),
+			"<html>Needle built</html>\n",
+			"utf8",
+		);
 
 		const index = await buildGitCacheSearchIndex(TEST_SPEC, cacheDir);
 		expect(index.sections.docs.files).toEqual(["docs/guide.md"]);

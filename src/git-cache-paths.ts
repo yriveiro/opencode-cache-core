@@ -1,5 +1,5 @@
 import { join } from "node:path";
-
+import { getGitCacheLookups } from "./git-cache-lookups";
 import type {
 	GitCacheArtifactSpec,
 	GitCacheSourceSpec,
@@ -18,7 +18,7 @@ export function getGitSourceDir<TScope extends string>(
 	cacheDir: string,
 	sourceId: string,
 ): string {
-	const source = spec.sources.find((entry) => entry.id === sourceId);
+	const source = getGitCacheLookups(spec).sourcesById.get(sourceId);
 	if (source == null) {
 		throw new Error(`Unknown source '${sourceId}'.`);
 	}
@@ -30,7 +30,7 @@ export function getGitArtifact<TScope extends string>(
 	spec: GitCacheSpec<TScope>,
 	artifactId: string,
 ): GitCacheArtifactSpec {
-	const artifact = (spec.artifacts ?? []).find((entry) => entry.id === artifactId);
+	const artifact = getGitCacheLookups(spec).artifactsById.get(artifactId);
 	if (artifact == null) {
 		throw new Error(`Unknown artifact '${artifactId}'.`);
 	}
@@ -54,7 +54,9 @@ export function getGitArtifactReadinessPath<TScope extends string>(
 ): string {
 	const artifact = getGitArtifact(spec, artifactId);
 	const artifactDir = getGitArtifactDir(spec, cacheDir, artifactId);
-	return artifact.readiness == null ? artifactDir : join(artifactDir, artifact.readiness);
+	return artifact.readiness == null
+		? artifactDir
+		: join(artifactDir, artifact.readiness);
 }
 
 export function getGitSectionBaseDir<TScope extends string>(
@@ -62,7 +64,11 @@ export function getGitSectionBaseDir<TScope extends string>(
 	cacheDir: string,
 	scope: TScope,
 ): string {
-	const section = spec.sections[scope];
+	const section = getGitCacheLookups(spec).sectionsByScope.get(scope);
+	if (section == null) {
+		throw new Error(`Unknown section '${String(scope)}'.`);
+	}
+
 	return section.root.kind === "source"
 		? getGitSourceDir(spec, cacheDir, section.root.id)
 		: getGitArtifactDir(spec, cacheDir, section.root.id);

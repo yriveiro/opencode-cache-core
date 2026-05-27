@@ -1,5 +1,7 @@
 import * as z from "zod";
 
+import { getGitCacheLookups } from "./git-cache-lookups";
+
 const NonEmptyStringSchema = z.string().trim().min(1);
 
 export interface GitCacheToolConfig {
@@ -38,13 +40,13 @@ export interface GitCacheArtifactSpec {
 
 export type GitCacheSectionRoot =
 	| {
-		kind: "source";
-		id: string;
-	}
+			kind: "source";
+			id: string;
+	  }
 	| {
-		kind: "artifact";
-		id: string;
-	};
+			kind: "artifact";
+			id: string;
+	  };
 
 export interface GitCacheSectionSpec {
 	label: string;
@@ -144,6 +146,7 @@ export const GitCacheSpecSchema = z
 	})
 	.superRefine((spec, context) => {
 		const sourceIds = new Set<string>();
+		let readySourceCount = 0;
 		for (const [index, source] of spec.sources.entries()) {
 			if (sourceIds.has(source.id)) {
 				context.addIssue({
@@ -153,10 +156,12 @@ export const GitCacheSpecSchema = z
 				});
 			}
 			sourceIds.add(source.id);
+			if (source.ready === true) {
+				readySourceCount += 1;
+			}
 		}
 
-		const readySources = spec.sources.filter((source) => source.ready === true);
-		if (readySources.length > 1) {
+		if (readySourceCount > 1) {
 			context.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "Only one source can be marked as ready.",
@@ -164,9 +169,8 @@ export const GitCacheSpecSchema = z
 			});
 		}
 
-		const artifacts = spec.artifacts ?? [];
 		const artifactIds = new Set<string>();
-		for (const [index, artifact] of artifacts.entries()) {
+		for (const [index, artifact] of (spec.artifacts ?? []).entries()) {
 			if (!sourceIds.has(artifact.source)) {
 				context.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -185,8 +189,8 @@ export const GitCacheSpecSchema = z
 			artifactIds.add(artifact.id);
 		}
 
-		const scopes = Object.keys(spec.sections);
-		if (scopes.length === 0) {
+		const sections = Object.entries(spec.sections);
+		if (sections.length === 0) {
 			context.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: "At least one section is required.",
@@ -194,8 +198,7 @@ export const GitCacheSpecSchema = z
 			});
 		}
 
-		for (const scope of scopes) {
-			const section = spec.sections[scope];
+		for (const [scope, section] of sections) {
 			if (section.root.kind === "source" && !sourceIds.has(section.root.id)) {
 				context.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -204,7 +207,10 @@ export const GitCacheSpecSchema = z
 				});
 			}
 
-			if (section.root.kind === "artifact" && !artifactIds.has(section.root.id)) {
+			if (
+				section.root.kind === "artifact" &&
+				!artifactIds.has(section.root.id)
+			) {
 				context.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: `Section '${scope}' references missing artifact '${section.root.id}'.`,
@@ -231,16 +237,7 @@ export function defineGitCacheSpec<const TScope extends string>(
 export function resolveReadySourceId<TScope extends string>(
 	spec: GitCacheSpec<TScope>,
 ): string {
-	if (spec.readySource != null) {
-		return spec.readySource;
-	}
-
-	const markedReadySource = spec.sources.find((source) => source.ready === true);
-	if (markedReadySource != null) {
-		return markedReadySource.id;
-	}
-
-	return spec.sources[0]!.id;
+	return getGitCacheLookups(spec).readySourceId;
 }
 
 export function getGitCacheScopes<const TScope extends string>(

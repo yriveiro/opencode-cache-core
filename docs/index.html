@@ -1179,7 +1179,7 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
           <div class="section-content">
             <ul>
               <li><code>process.env[spec.envVar]</code> overrides the cache directory when present.</li>
-              <li>Otherwise the cache lives under <code>~/.cache/opencode/skills/&lt;spec.defaultCacheSubdir&gt;</code>.</li>
+              <li>Otherwise the cache lives under <code>~/.cache/opencode/plugins/cache-core/&lt;spec.defaultCacheSubdir&gt;</code>.</li>
               <li><code>readySource</code>, or the first ready-marked source, or the first source, determines whether the cache is initialized for status/search.</li>
               <li><code>cache-state.json</code> and <code>search-index.json</code> are derived from that resolved cache directory.</li>
             </ul>
@@ -1199,7 +1199,7 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
                 <thead><tr><th>Field</th><th>Meaning</th><th>Example</th></tr></thead>
                 <tbody>
                   <tr><td><code>envVar</code></td><td>Environment variable that overrides the cache directory.</td><td><code>OPENCODE_PYDANTIC_CACHE_DIR</code></td></tr>
-                  <tr><td><code>defaultCacheSubdir</code></td><td>Default directory name under <code>~/.cache/opencode/skills</code>.</td><td><code>pydantic</code></td></tr>
+                  <tr><td><code>defaultCacheSubdir</code></td><td>Default directory name under <code>~/.cache/opencode/plugins/cache-core</code>.</td><td><code>pydantic</code></td></tr>
                   <tr><td><code>sources</code></td><td>Repositories cloned into the cache directory.</td><td><code>[{ id, url, branch, sparse? }]</code></td></tr>
                   <tr><td><code>artifacts</code></td><td>Directories inside a source tree that contain generated output.</td><td><code>[{ id, source, path, readiness? }]</code></td></tr>
                   <tr><td><code>sections</code></td><td>Search scopes built from either a source tree or an artifact tree.</td><td><code>{ docs: { root, patterns } }</code></td></tr>
@@ -1277,7 +1277,7 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
     return configuredCacheDir;
   }
 
-  return join(homeDirectory, ".cache", "opencode", "skills", defaultCacheSubdir);
+  return join(homeDirectory, ".cache", "opencode", "plugins", "cache-core", defaultCacheSubdir);
 }
 
 export function resolveReadySourceId&lt;TScope extends string&gt;(

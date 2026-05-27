@@ -84,7 +84,7 @@ export default createGitCachePlugin({
 - `title`: title used in notifications
 - `service`: service name used for host logging
 - `envVar`: environment variable that overrides the cache directory
-- `defaultCacheSubdir`: default subdirectory under `~/.cache/opencode/skills`
+- `defaultCacheSubdir`: default subdirectory under `~/.cache/opencode/plugins/cache-core`
 - `initMessage`: initialization log message
 - `updateTool`: name, description, failure label, and success log message
 - `statusTool`: name and description
@@ -126,7 +126,7 @@ Each entry in `sections` becomes a search scope.
 The cache directory resolves as:
 
 - `process.env[spec.envVar]`, when set
-- otherwise `~/.cache/opencode/skills/<spec.defaultCacheSubdir>`
+- otherwise `~/.cache/opencode/plugins/cache-core/<spec.defaultCacheSubdir>`
 
 Inside that directory, the runtime writes:
 

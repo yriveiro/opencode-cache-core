@@ -87,7 +87,7 @@ function resolveGitCacheDir(
 		return configuredCacheDir;
 	}
 
-	return join(homeDirectory, ".cache", "opencode", "skills", defaultCacheSubdir);
+	return join(homeDirectory, ".cache", "opencode", "plugins", "cache-core", defaultCacheSubdir);
 }
 
 export function formatCommandFailure(title: string, result: CommandResult): string {

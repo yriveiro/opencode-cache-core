@@ -163,9 +163,11 @@ The update tool:
 - syncs every source defined in the spec
 - updates `cache-state.json`
 - rebuilds `search-index.json`
-- sends a notification to the active session
+- streams live progress through tool metadata and milestone notifications to the active session
 
 If the ready source is already present and the cache is still fresh, the tool returns the current cache summary unless `force` is set.
+
+Downstream consumers can reuse the same update lifecycle with `updateGitCache({ ... })` and can render the same metadata/message contract with `buildGitCacheUpdateProgressDisplay(...)` or `publishGitCacheUpdateProgress(...)`.
 
 ### Status tool
 
@@ -214,7 +216,10 @@ Useful properties and methods:
 - `writeState()`
 - `updateState()`
 - `loadIndex()`
-- `refreshIndex()`
+- `buildGitCacheSearchIndex(spec, cacheDir, { onProgress })`
+- `updateGitCache({ runtime, spec, force, options: { onProgress } })`
+- `searchGitCacheIndex(index, query, options)`
+- `refreshIndex({ onProgress })`
 - `formatIndexCounts()`
 
 ### Paths and readiness
@@ -225,7 +230,7 @@ Useful properties and methods:
 - `isSourceReady()`
 - `isArtifactReady()`
 - `getSourceRevision()`
-- `syncSources()`
+- `syncSources({ onProgress })`
 
 ### Host and subprocess helpers
 
@@ -241,6 +246,20 @@ Typical downstream uses:
 - refresh the search index after a build step
 - append extra revision/build details to the status tool
 
+`buildGitCacheSearchIndex()`, `syncSources()`, and `refreshIndex()` accept an optional `onProgress` callback so downstream plugins can surface milestone updates without reimplementing the underlying Git or indexing work.
+
+If a downstream tool wants the same user-facing update display as the built-in update tool, use:
+
+- `updateGitCache()` for the single combined update flow
+- `buildGitCacheUpdateProgressDisplay()` to derive `{ title, metadata, message }`
+- `publishGitCacheUpdateProgress()` to write the shared metadata shape to a `ToolContext`
+
+Named exported option types are available for downstream consumers:
+
+- `GitCacheIndexProgressOptions<TScope>`
+- `GitCacheUpdateProgressOptions<TScope>`
+- `GitCacheSyncProgressOptions`
+
 ## Key Exports
 
 Public root exports:
@@ -248,7 +267,10 @@ Public root exports:
 - `defineGitCacheSpec`
 - `createGitCachePlugin`
 - `buildGitCacheSearchIndex`
+- `updateGitCache`
 - `searchGitCacheIndex`
+- `buildGitCacheUpdateProgressDisplay`
+- `publishGitCacheUpdateProgress`
 
 The package keeps lower-level helpers internal. Package tests import implementation files directly, but downstream packages should use the root plugin API only.
 

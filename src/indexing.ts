@@ -3,6 +3,29 @@ import { join } from "node:path";
 
 import type { Index, Section, SectionDefinition } from "./types";
 
+interface IndexBuildProgressBase<TScope extends string> {
+	scope: TScope;
+	index: number;
+	total: number;
+	baseDir: string;
+	patterns: readonly string[];
+}
+
+export interface IndexBuildStartProgress<TScope extends string>
+	extends IndexBuildProgressBase<TScope> {
+	phase: "start";
+}
+
+export interface IndexBuildCompleteProgress<TScope extends string>
+	extends IndexBuildProgressBase<TScope> {
+	phase: "complete";
+	fileCount: number;
+}
+
+export type IndexBuildProgress<TScope extends string> =
+	| IndexBuildStartProgress<TScope>
+	| IndexBuildCompleteProgress<TScope>;
+
 function normalizeRelativePath(value: string): string {
 	return value.replaceAll("\\", "/");
 }
@@ -118,17 +141,41 @@ async function scanRelativeFiles(
 export async function buildIndex<TScope extends string>(input: {
 	cacheDir: string;
 	sections: Record<TScope, SectionDefinition>;
+	onProgress?: (progress: IndexBuildProgress<TScope>) => Promise<void> | void;
 }): Promise<Index<TScope>> {
 	const sections = {} as Record<TScope, Section>;
 	const entries = Object.entries(input.sections) as Array<
 		[TScope, SectionDefinition]
 	>;
 
-	for (const [scope, definition] of entries) {
+	for (const [entryIndex, [scope, definition]] of entries.entries()) {
+		const progress = {
+			scope,
+			index: entryIndex + 1,
+			total: entries.length,
+			baseDir: definition.baseDir,
+			patterns: definition.patterns,
+		} as const;
+
+		await input.onProgress?.({
+			phase: "start",
+			...progress,
+		});
+
+		const files = await scanRelativeFiles(
+			definition.baseDir,
+			definition.patterns,
+		);
 		sections[scope] = {
 			baseDir: definition.baseDir,
-			files: await scanRelativeFiles(definition.baseDir, definition.patterns),
+			files,
 		};
+
+		await input.onProgress?.({
+			phase: "complete",
+			...progress,
+			fileCount: files.length,
+		});
 	}
 
 	return {

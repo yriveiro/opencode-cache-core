@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import type { Hooks, PluginInput, ToolContext } from "@opencode-ai/plugin";
 import {
 	getGitArtifactDir,
 	getGitArtifactReadinessPath,
@@ -10,8 +12,15 @@ import {
 } from "../src/git-cache-paths";
 import {
 	buildGitCacheSearchIndex,
+	buildGitCacheUpdateProgressDisplay,
+	createGitCachePlugin,
 	formatCommandFailure,
+	type GitCacheIndexProgress,
+	type GitCacheUpdateProgress,
+	publishGitCacheUpdateProgress,
+	runCommand,
 	searchGitCacheIndex,
+	updateGitCache,
 } from "../src/git-cache-plugin";
 import {
 	defineGitCacheSpec,
@@ -81,6 +90,68 @@ async function createTempCacheDir(): Promise<string> {
 	const directory = await mkdtemp(join(tmpdir(), "opencode-cache-core-"));
 	tempDirs.push(directory);
 	return directory;
+}
+
+async function initializeGitRepository(directory: string): Promise<void> {
+	const commands: Array<readonly [string, readonly string[]]> = [
+		["git", ["init"]],
+		["git", ["branch", "-M", "main"]],
+		["git", ["add", "."]],
+		[
+			"git",
+			[
+				"-c",
+				"commit.gpgsign=false",
+				"-c",
+				"user.name=Test User",
+				"-c",
+				"user.email=test@example.com",
+				"commit",
+				"-m",
+				"Initial commit",
+			],
+		],
+	];
+
+	for (const [command, args] of commands) {
+		const result = await runCommand(command, args, directory);
+		expect(result.exitCode).toBe(0);
+	}
+}
+
+function createMockClient(notifications: string[]): PluginInput["client"] {
+	return {
+		app: {
+			log: async () => true,
+		},
+		session: {
+			prompt: async (input: { body: { parts: Array<{ text: string }> } }) => {
+				notifications.push(input.body.parts[0].text);
+				return {};
+			},
+		},
+	} as PluginInput["client"];
+}
+
+function createMockToolContext(
+	cacheDir: string,
+	metadataUpdates: Array<{
+		title?: string;
+		metadata?: Record<string, unknown>;
+	}>,
+): ToolContext {
+	return {
+		sessionID: "session-1",
+		messageID: "message-1",
+		agent: "build",
+		directory: cacheDir,
+		worktree: cacheDir,
+		abort: new AbortController().signal,
+		metadata(input) {
+			metadataUpdates.push(input);
+		},
+		ask: async () => {},
+	};
 }
 
 afterEach(async () => {
@@ -280,21 +351,364 @@ describe("search index", () => {
 			line: 1,
 		});
 	});
+
+	test("reports section progress while building the search index", async () => {
+		const cacheDir = await createTempCacheDir();
+		const sourceDir = join(cacheDir, "source");
+		const docsDir = join(sourceDir, "docs");
+		const buildDir = join(sourceDir, "build");
+
+		await mkdir(docsDir, { recursive: true });
+		await mkdir(buildDir, { recursive: true });
+		await writeFile(join(docsDir, "guide.md"), "Needle docs\n", "utf8");
+		await writeFile(join(buildDir, "index.html"), "Needle built\n", "utf8");
+
+		const progress: Array<{
+			phase: GitCacheIndexProgress<"docs" | "built">["phase"];
+			scope: "docs" | "built";
+			index: number;
+			total: number;
+			fileCount: number | null;
+		}> = [];
+
+		await buildGitCacheSearchIndex(TEST_SPEC, cacheDir, {
+			onProgress: (event) => {
+				progress.push({
+					phase: event.phase,
+					scope: event.scope,
+					index: event.index,
+					total: event.total,
+					fileCount: event.fileCount ?? null,
+				});
+			},
+		});
+
+		expect(progress).toEqual([
+			{ phase: "start", scope: "docs", index: 1, total: 2, fileCount: null },
+			{
+				phase: "complete",
+				scope: "docs",
+				index: 1,
+				total: 2,
+				fileCount: 1,
+			},
+			{ phase: "start", scope: "built", index: 2, total: 2, fileCount: null },
+			{
+				phase: "complete",
+				scope: "built",
+				index: 2,
+				total: 2,
+				fileCount: 1,
+			},
+		]);
+	});
+
+	test(
+		"update tool emits progress notifications and metadata",
+		async () => {
+			const originDir = await createTempCacheDir();
+			const cacheDir = await createTempCacheDir();
+			const docsDir = join(originDir, "docs");
+			const buildDir = join(originDir, "build");
+
+			await mkdir(docsDir, { recursive: true });
+			await mkdir(buildDir, { recursive: true });
+			await writeFile(join(docsDir, "guide.md"), "Needle docs\n", "utf8");
+			await writeFile(join(buildDir, "index.html"), "Needle built\n", "utf8");
+			await initializeGitRepository(originDir);
+
+			const envVar = "TEST_PROGRESS_CACHE_DIR";
+			const previousEnv = process.env[envVar];
+			process.env[envVar] = cacheDir;
+
+			try {
+				const spec = defineGitCacheSpec({
+					schemaVersion: 1,
+					title: "Progress Cache",
+					service: "progress-cache",
+					envVar,
+					defaultCacheSubdir: "progress-cache",
+					initMessage: "progress cache plugin initialized",
+					updateTool: {
+						name: "progress-cache-update",
+						description: "Update the progress cache.",
+						failureLabel: "Failed to update progress cache",
+						successLogMessage: "progress cache update completed",
+					},
+					statusTool: {
+						name: "progress-cache-status",
+						description: "Report progress cache status.",
+					},
+					searchTool: {
+						name: "progress-cache-search",
+						description: "Search the progress cache.",
+						missingMessage: "Progress cache is not initialized.",
+						failureLabel: "Failed to search progress cache",
+					},
+					sources: [
+						{
+							id: "repo",
+							url: pathToFileURL(originDir).href,
+							branch: "main",
+							directory: "source",
+							ready: true,
+						},
+					],
+					artifacts: TEST_SPEC.artifacts,
+					sections: TEST_SPEC.sections,
+				});
+
+				const notifications: string[] = [];
+				const metadataUpdates: Array<{
+					title?: string;
+					metadata?: Record<string, unknown>;
+				}> = [];
+
+				const plugin = createGitCachePlugin({ spec });
+				const hooks = await plugin({
+					client: createMockClient(notifications),
+				} as PluginInput);
+
+				const updateTool = (hooks.tool as Hooks["tool"])?.[
+					spec.updateTool.name
+				];
+				expect(updateTool).toBeDefined();
+				if (updateTool == null) {
+					throw new Error("Expected update tool to be defined");
+				}
+
+				const output = await updateTool.execute(
+					{},
+					createMockToolContext(cacheDir, metadataUpdates),
+				);
+
+				expect(output).toContain("State file:");
+				expect(output).toContain("Search index:");
+				expect(notifications).toHaveLength(5);
+				expect(
+					notifications.some((message) => message.includes("Update started")),
+				).toBe(true);
+				expect(
+					notifications.some((message) =>
+						message.includes("Synced source 1/1: repo"),
+					),
+				).toBe(true);
+				expect(
+					notifications.some((message) =>
+						message.includes("Indexed section 1/2: Docs"),
+					),
+				).toBe(true);
+				expect(
+					notifications.some((message) =>
+						message.includes("Indexed section 2/2: Built"),
+					),
+				).toBe(true);
+				expect(
+					metadataUpdates.some(
+						(update) =>
+							update.title === "Updating Progress Cache: syncing 1/1 (repo)",
+					),
+				).toBe(true);
+				expect(
+					metadataUpdates.some(
+						(update) =>
+							update.title === "Updating Progress Cache: indexing 1/2 (Docs)",
+					),
+				).toBe(true);
+				expect(
+					metadataUpdates.some(
+						(update) => update.title === "Updating Progress Cache: complete",
+					),
+				).toBe(true);
+			} finally {
+				if (previousEnv == null) {
+					delete process.env[envVar];
+				} else {
+					process.env[envVar] = previousEnv;
+				}
+			}
+		},
+		{ timeout: 15000 },
+	);
+
+	test("consumers can publish update progress with the shared helper", () => {
+		const metadataUpdates: Array<{
+			title?: string;
+			metadata?: Record<string, unknown>;
+		}> = [];
+		const progress: GitCacheUpdateProgress<"docs" | "built"> = {
+			phase: "index",
+			progress: {
+				phase: "complete",
+				scope: "docs",
+				index: 1,
+				total: 2,
+				baseDir: "/tmp/cache/source",
+				patterns: ["docs/**/*.md"],
+				fileCount: 3,
+			},
+			sources: 1,
+			sections: 2,
+		};
+
+		const display = buildGitCacheUpdateProgressDisplay({
+			spec: TEST_SPEC,
+			progress,
+			cacheDir: "/tmp/cache",
+		});
+
+		expect(display).toEqual({
+			title: "Updating Test Cache: indexed 1/2 (Docs)",
+			metadata: {
+				phase: "index",
+				status: "complete",
+				sources: 1,
+				sections: 2,
+				scope: "docs",
+				current: 1,
+				total: 2,
+				fileCount: 3,
+			},
+			message: "Indexed section 1/2: Docs\nFiles: 3",
+		});
+
+		const published = publishGitCacheUpdateProgress(
+			createMockToolContext("/tmp/cache", metadataUpdates),
+			{
+				spec: TEST_SPEC,
+				progress: {
+					phase: "start",
+					sources: 1,
+					sections: 2,
+				},
+				cacheDir: "/tmp/cache",
+			},
+		);
+
+		expect(published.message).toBe(
+			"Update started\nCache directory: /tmp/cache\nSources: 1\nSections: 2",
+		);
+		expect(metadataUpdates).toEqual([
+			{
+				title: "Updating Test Cache: starting",
+				metadata: {
+					phase: "start",
+					sources: 1,
+					sections: 2,
+				},
+			},
+		]);
+	});
+
+	test("consumers can run updateGitCache with one progress stream", async () => {
+		const cacheDir = await createTempCacheDir();
+		const sourceDir = join(cacheDir, "source");
+		const docsDir = join(sourceDir, "docs");
+		const buildDir = join(sourceDir, "build");
+
+		await mkdir(docsDir, { recursive: true });
+		await mkdir(buildDir, { recursive: true });
+		await writeFile(join(docsDir, "guide.md"), "Needle docs\n", "utf8");
+		await writeFile(join(buildDir, "index.html"), "Needle built\n", "utf8");
+
+		const updates: GitCacheUpdateProgress<"docs" | "built">[] = [];
+		const runtime = {
+			cacheDir,
+			stateFile: join(cacheDir, "cache-state.json"),
+			indexFile: join(cacheDir, "search-index.json"),
+			maxAgeSeconds: 3600,
+			readState: async () => ({ updatedAt: null }),
+			loadIndex: async () => null,
+			refreshIndex: async (options?: {
+				onProgress?: (
+					progress: GitCacheIndexProgress<"docs" | "built">,
+				) => Promise<void> | void;
+			}) => {
+				return buildGitCacheSearchIndex(TEST_SPEC, cacheDir, options);
+			},
+			formatIndexCounts: (
+				index: Awaited<ReturnType<typeof buildGitCacheSearchIndex>>,
+			) => [
+				`Docs files: ${index.sections.docs.files.length}`,
+				`Built files: ${index.sections.built.files.length}`,
+			],
+			syncSources: async (options?: {
+				onProgress?: (progress: {
+					phase: "start" | "complete";
+					sourceId: string;
+					label: string;
+					current: number;
+					total: number;
+					revision?: string | null;
+					ready?: boolean;
+					message?: string | null;
+				}) => Promise<void> | void;
+			}) => {
+				await options?.onProgress?.({
+					phase: "start",
+					sourceId: "repo",
+					label: "repo",
+					current: 1,
+					total: 1,
+				});
+				await options?.onProgress?.({
+					phase: "complete",
+					sourceId: "repo",
+					label: "repo",
+					current: 1,
+					total: 1,
+					revision: "abc123",
+					ready: true,
+					message: null,
+				});
+				return ["  Updated repo"];
+			},
+			isSourceReady: async () => false,
+		};
+
+		const result = await updateGitCache({
+			runtime,
+			spec: TEST_SPEC,
+			options: {
+				onProgress: (progress) => {
+					updates.push(progress);
+				},
+			},
+		});
+
+		expect(updates.map((event) => event.phase)).toEqual([
+			"start",
+			"sync",
+			"sync",
+			"index",
+			"index",
+			"index",
+			"index",
+			"complete",
+		]);
+		expect(result.lines).toContain(`State file: ${runtime.stateFile}`);
+		expect(result.lines).toContain(`Search index: ${runtime.indexFile}`);
+		expect(result.fresh).toBe(false);
+	});
 });
 
 describe("createPermissionHandler", () => {
 	test("allows matching cache-directory requests and ignores unrelated ones", async () => {
 		const handler = createPermissionHandler("/tmp/example-cache");
-		const allowed = { status: "ask" } as { status: string };
-		const ignored = { status: "ask" } as { status: string };
+		const allowed = { status: "ask" } as const satisfies {
+			status: "ask" | "deny" | "allow";
+		};
+		const ignored = { status: "ask" } as const satisfies {
+			status: "ask" | "deny" | "allow";
+		};
 
 		await handler(
 			{
 				type: "external_directory",
 				title: "Access /tmp/example-cache for local docs",
 				pattern: undefined,
-			} as never,
-			allowed as never,
+			} as Parameters<typeof handler>[0],
+			allowed as Parameters<typeof handler>[1],
 		);
 
 		await handler(
@@ -302,8 +716,8 @@ describe("createPermissionHandler", () => {
 				type: "external_directory",
 				title: "Unrelated directory request",
 				pattern: ["/tmp/elsewhere"],
-			} as never,
-			ignored as never,
+			} as Parameters<typeof handler>[0],
+			ignored as Parameters<typeof handler>[1],
 		);
 
 		expect(allowed.status).toBe("allow");

@@ -1321,7 +1321,7 @@ export function resolveReadySourceId&lt;TScope extends string&gt;(
             <div class="card-grid">
               <article class="card">
                 <h3>Update tool</h3>
-                <p>Runs Git sync for every source, refreshes the search index, persists state, and skips work when the cache is still fresh unless <code>force</code> is set.</p>
+                <p>Runs Git sync for every source, refreshes the search index, persists state, emits milestone progress updates during long runs, and skips work when the cache is still fresh unless <code>force</code> is set.</p>
               </article>
               <article class="card">
                 <h3>Status tool</h3>
@@ -1361,7 +1361,7 @@ export function resolveReadySourceId&lt;TScope extends string&gt;(
     Runtime-&gt;&gt;Git: clone / fetch / reset / sparse-checkout
     Runtime-&gt;&gt;State: write source state
     Tool-&gt;&gt;Index: refreshIndex()
-    Tool-&gt;&gt;Session: send notification
+    Tool-&gt;&gt;Session: send progress + final notifications
     Tool--&gt;&gt;Host: return output</pre>
             </div>
           </div>
@@ -1646,7 +1646,7 @@ export function defineGitCacheSpec&lt;const TScope extends string&gt;(
           <div class="section-content">
             <div class="doc-row">
               <div class="doc-content">
-                <p>The runtime context computes derived file locations once and then exposes helper methods for state, search, notifications, and subprocess execution.</p>
+                <p>The runtime context computes derived file locations once and then exposes helper methods for state, search, notifications, subprocess execution, and optional progress callbacks during source sync and index refresh.</p>
                 <p><code>runtime.loadIndex()</code> is lazy: it only returns an index when the ready source exists and otherwise refreshes the stored payload when needed.</p>
               </div>
               <div>

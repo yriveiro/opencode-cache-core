@@ -6,6 +6,8 @@ import { join } from "node:path";
 import {
 	type Hooks,
 	type Plugin,
+	type PluginInput,
+	type ToolContext,
 	type ToolDefinition,
 	tool,
 } from "@opencode-ai/plugin";
@@ -30,7 +32,7 @@ import {
 	loadGitCacheState,
 	writeGitCacheState,
 } from "./git-cache-state";
-import { buildIndex } from "./indexing";
+import { buildIndex, type IndexBuildProgress } from "./indexing";
 import { buildNotification, createNotificationSender } from "./notifications";
 import { createPermissionHandler } from "./permissions";
 import { searchIndex } from "./search";
@@ -52,7 +54,7 @@ function formatErrorMessage(prefix: string, error: unknown): string {
 }
 
 async function logInitialization(input: {
-	client: Parameters<Plugin>[0]["client"];
+	client: PluginInput["client"];
 	service: string;
 	message: string;
 }): Promise<void> {
@@ -317,9 +319,190 @@ function isIndexForScopes<TScope extends string>(
 	return true;
 }
 
+export type GitCacheIndexStartProgress<TScope extends string> = Extract<
+	IndexBuildProgress<TScope>,
+	{ phase: "start" }
+>;
+
+export type GitCacheIndexCompleteProgress<TScope extends string> = Extract<
+	IndexBuildProgress<TScope>,
+	{ phase: "complete" }
+>;
+
+export type GitCacheIndexProgress<TScope extends string> =
+	| GitCacheIndexStartProgress<TScope>
+	| GitCacheIndexCompleteProgress<TScope>;
+
+interface GitCacheSyncProgressBase {
+	sourceId: string;
+	label: string;
+	current: number;
+	total: number;
+}
+
+export interface GitCacheSyncStartProgress extends GitCacheSyncProgressBase {
+	phase: "start";
+}
+
+export interface GitCacheSyncCompleteProgress extends GitCacheSyncProgressBase {
+	phase: "complete";
+	revision: string | null;
+	ready: boolean;
+	message: string | null;
+}
+
+export type GitCacheSyncProgress =
+	| GitCacheSyncStartProgress
+	| GitCacheSyncCompleteProgress;
+
+export interface GitCacheIndexProgressOptions<TScope extends string> {
+	onProgress?: (
+		progress: GitCacheIndexProgress<TScope>,
+	) => Promise<void> | void;
+}
+
+export interface GitCacheSyncProgressOptions {
+	onProgress?: (progress: GitCacheSyncProgress) => Promise<void> | void;
+}
+
+export interface GitCacheUpdateStartProgress {
+	phase: "start";
+	sources: number;
+	sections: number;
+}
+
+export interface GitCacheUpdateFreshProgress {
+	phase: "fresh";
+	sources: number;
+	sections: number;
+}
+
+export interface GitCacheUpdateCompleteProgress {
+	phase: "complete";
+	sources: number;
+	sections: number;
+}
+
+export interface GitCacheUpdateSyncProgress {
+	phase: "sync";
+	progress: GitCacheSyncProgress;
+	sources: number;
+	sections: number;
+}
+
+export interface GitCacheUpdateIndexProgress<TScope extends string> {
+	phase: "index";
+	progress: GitCacheIndexProgress<TScope>;
+	sources: number;
+	sections: number;
+}
+
+export type GitCacheUpdateProgress<TScope extends string> =
+	| GitCacheUpdateStartProgress
+	| GitCacheUpdateFreshProgress
+	| GitCacheUpdateCompleteProgress
+	| GitCacheUpdateSyncProgress
+	| GitCacheUpdateIndexProgress<TScope>;
+
+export interface GitCacheUpdateProgressOptions<TScope extends string> {
+	onProgress?: (
+		progress: GitCacheUpdateProgress<TScope>,
+	) => Promise<void> | void;
+}
+
+export interface GitCacheUpdateResult<TScope extends string> {
+	lines: string[];
+	index: Index<TScope>;
+	fresh: boolean;
+	freshnessHoursAgo: number | null;
+}
+
+export interface GitCacheUpdateProgressMetadata {
+	phase: "start" | "sync" | "index" | "complete";
+	status?: "start" | "complete";
+	sources?: number;
+	sections?: number;
+	sourceId?: string;
+	scope?: string;
+	current?: number;
+	total?: number;
+	revision?: string | null;
+	ready?: boolean;
+	fileCount?: number;
+}
+
+export interface GitCacheUpdateProgressDisplay {
+	title: string;
+	metadata: GitCacheUpdateProgressMetadata;
+	message: string | null;
+}
+
+export function buildGitCacheUpdateProgressMetadata<TScope extends string>(
+	progress: GitCacheUpdateProgress<TScope>,
+): GitCacheUpdateProgressMetadata {
+	switch (progress.phase) {
+		case "start":
+			return {
+				phase: "start",
+				sources: progress.sources,
+				sections: progress.sections,
+			};
+		case "fresh":
+			return {
+				phase: "complete",
+				status: "complete",
+				sources: progress.sources,
+				sections: progress.sections,
+			};
+		case "complete":
+			return {
+				phase: "complete",
+				status: "complete",
+				sources: progress.sources,
+				sections: progress.sections,
+			};
+		case "sync": {
+			const metadata: GitCacheUpdateProgressMetadata = {
+				phase: "sync",
+				status: progress.progress.phase,
+				sources: progress.sources,
+				sections: progress.sections,
+				sourceId: progress.progress.sourceId,
+				current: progress.progress.current,
+				total: progress.progress.total,
+			};
+
+			if (progress.progress.phase === "complete") {
+				metadata.revision = progress.progress.revision;
+				metadata.ready = progress.progress.ready;
+			}
+
+			return metadata;
+		}
+		case "index": {
+			const metadata: GitCacheUpdateProgressMetadata = {
+				phase: "index",
+				status: progress.progress.phase,
+				sources: progress.sources,
+				sections: progress.sections,
+				scope: progress.progress.scope,
+				current: progress.progress.index,
+				total: progress.progress.total,
+			};
+
+			if (progress.progress.phase === "complete") {
+				metadata.fileCount = progress.progress.fileCount;
+			}
+
+			return metadata;
+		}
+	}
+}
+
 export async function buildGitCacheSearchIndex<TScope extends string>(
 	spec: GitCacheSpec<TScope>,
 	cacheDir: string,
+	options?: GitCacheIndexProgressOptions<TScope>,
 ): Promise<Index<TScope>> {
 	const lookups = getGitCacheLookups(spec);
 	const sections = {} as Record<
@@ -345,6 +528,7 @@ export async function buildGitCacheSearchIndex<TScope extends string>(
 	return buildIndex({
 		cacheDir,
 		sections,
+		onProgress: options?.onProgress,
 	});
 }
 
@@ -377,7 +561,7 @@ export function formatGitCacheIndexCounts<TScope extends string>(
 }
 
 export interface GitCachePluginContext<TScope extends string> {
-	client: Parameters<Plugin>[0]["client"];
+	client: PluginInput["client"];
 	spec: GitCacheSpec<TScope>;
 	cacheDir: string;
 	indexFile: string;
@@ -399,9 +583,11 @@ export interface GitCachePluginContext<TScope extends string> {
 	writeState(state: GitCacheState): Promise<void>;
 	updateState(mutator: (state: GitCacheState) => void): Promise<GitCacheState>;
 	loadIndex(): Promise<Index<TScope> | null>;
-	refreshIndex(): Promise<Index<TScope>>;
+	refreshIndex(
+		options?: GitCacheIndexProgressOptions<TScope>,
+	): Promise<Index<TScope>>;
 	formatIndexCounts(index: Index<TScope>): string[];
-	syncSources(): Promise<string[]>;
+	syncSources(options?: GitCacheSyncProgressOptions): Promise<string[]>;
 	runCommand: typeof runCommand;
 	formatCommandFailure: typeof formatCommandFailure;
 }
@@ -418,7 +604,7 @@ export interface GitCachePluginOptions<TScope extends string> {
 }
 
 function createPluginContext<TScope extends string>(input: {
-	client: Parameters<Plugin>[0]["client"];
+	client: PluginInput["client"];
 	spec: GitCacheSpec<TScope>;
 	cacheDir: string;
 	sendNotification: (sessionID: string, message: string) => Promise<void>;
@@ -452,8 +638,12 @@ function createPluginContext<TScope extends string>(input: {
 		return currentState;
 	};
 
-	const refreshIndex = async (): Promise<Index<TScope>> => {
-		const index = await buildGitCacheSearchIndex(input.spec, input.cacheDir);
+	const refreshIndex = async (
+		options?: GitCacheIndexProgressOptions<TScope>,
+	): Promise<Index<TScope>> => {
+		const index = await buildGitCacheSearchIndex(input.spec, input.cacheDir, {
+			onProgress: options?.onProgress,
+		});
 		await writeIndex(indexFile, index);
 		await updateState((state) => {
 			state.indexedAt = index.createdAt;
@@ -478,18 +668,30 @@ function createPluginContext<TScope extends string>(input: {
 		return isIndexForScopes(storedIndex, scopes) ? storedIndex : refreshIndex();
 	};
 
-	const syncSources = async (): Promise<string[]> => {
+	const syncSources = async (
+		options?: GitCacheSyncProgressOptions,
+	): Promise<string[]> => {
 		const now = new Date().toISOString();
 		const state = await readState();
 		const lines: string[] = [];
+		const totalSources = input.spec.sources.length;
 
-		for (const source of input.spec.sources) {
+		for (const [sourceIndex, source] of input.spec.sources.entries()) {
 			const sourceDir = getGitSourceDir(input.spec, input.cacheDir, source.id);
 			const previousState = state.sources[source.id];
+			const sourceLabel = source.label ?? source.id;
 			let revision = previousState?.revision ?? null;
 			let syncedAt = previousState?.syncedAt ?? null;
 			let ready = previousState?.ready ?? false;
 			let message = previousState?.message ?? null;
+
+			await options?.onProgress?.({
+				phase: "start",
+				sourceId: source.id,
+				label: sourceLabel,
+				current: sourceIndex + 1,
+				total: totalSources,
+			});
 
 			try {
 				lines.push(...(await syncGitSource(sourceDir, source)));
@@ -510,6 +712,17 @@ function createPluginContext<TScope extends string>(input: {
 				ready,
 				message,
 			};
+
+			await options?.onProgress?.({
+				phase: "complete",
+				sourceId: source.id,
+				label: sourceLabel,
+				current: sourceIndex + 1,
+				total: totalSources,
+				revision,
+				ready,
+				message,
+			});
 		}
 
 		state.updatedAt = now;
@@ -642,6 +855,233 @@ function buildArtifactLines<TScope extends string>(
 	return lines;
 }
 
+function buildUpdateProgressTitle(cacheTitle: string, detail: string): string {
+	return `Updating ${cacheTitle}: ${detail}`;
+}
+
+export function formatGitCacheUpdateProgressTitle<TScope extends string>(
+	spec: GitCacheSpec<TScope>,
+	progress: GitCacheUpdateProgress<TScope>,
+): string {
+	switch (progress.phase) {
+		case "start":
+			return buildUpdateProgressTitle(spec.title, "starting");
+		case "fresh":
+			return buildUpdateProgressTitle(spec.title, "fresh");
+		case "complete":
+			return buildUpdateProgressTitle(spec.title, "complete");
+		case "sync":
+			return buildUpdateProgressTitle(
+				spec.title,
+				progress.progress.phase === "start"
+					? `syncing ${progress.progress.current}/${progress.progress.total} (${progress.progress.label})`
+					: `synced ${progress.progress.current}/${progress.progress.total} (${progress.progress.label})`,
+			);
+		case "index": {
+			const label = spec.sections[progress.progress.scope].label;
+			return buildUpdateProgressTitle(
+				spec.title,
+				progress.progress.phase === "start"
+					? `indexing ${progress.progress.index}/${progress.progress.total} (${label})`
+					: `indexed ${progress.progress.index}/${progress.progress.total} (${label})`,
+			);
+		}
+	}
+}
+
+function buildSourceProgressMessage(progress: GitCacheSyncProgress): string {
+	const lines = [
+		`Synced source ${progress.current}/${progress.total}: ${progress.label}`,
+	];
+
+	if (progress.phase === "start") {
+		return lines.join("\n");
+	}
+
+	if (progress.revision != null) {
+		lines.push(`Revision: ${progress.revision}`);
+	}
+
+	lines.push(`Ready: ${progress.ready ? "yes" : "no"}`);
+
+	if (progress.message != null) {
+		lines.push(`Status: ${progress.message}`);
+	}
+
+	return lines.join("\n");
+}
+
+export function formatGitCacheUpdateProgressMessage<
+	TScope extends string,
+>(input: {
+	spec: GitCacheSpec<TScope>;
+	progress: GitCacheUpdateProgress<TScope>;
+	cacheDir?: string;
+}): string | null {
+	switch (input.progress.phase) {
+		case "start":
+			return [
+				"Update started",
+				`Cache directory: ${input.cacheDir ?? input.spec.defaultCacheSubdir}`,
+				`Sources: ${input.progress.sources}`,
+				`Sections: ${input.progress.sections}`,
+			].join("\n");
+		case "fresh":
+			return null;
+		case "complete":
+			return null;
+		case "sync":
+			return input.progress.progress.phase === "complete"
+				? buildSourceProgressMessage(input.progress.progress)
+				: null;
+		case "index":
+			return input.progress.progress.phase === "complete"
+				? buildIndexProgressMessage(input.spec, input.progress.progress)
+				: null;
+	}
+}
+
+export function buildGitCacheUpdateProgressDisplay<
+	TScope extends string,
+>(input: {
+	spec: GitCacheSpec<TScope>;
+	progress: GitCacheUpdateProgress<TScope>;
+	cacheDir?: string;
+}): GitCacheUpdateProgressDisplay {
+	return {
+		title: formatGitCacheUpdateProgressTitle(input.spec, input.progress),
+		metadata: buildGitCacheUpdateProgressMetadata(input.progress),
+		message: formatGitCacheUpdateProgressMessage(input),
+	};
+}
+
+export function publishGitCacheUpdateProgress<TScope extends string>(
+	context: ToolContext,
+	input: {
+		spec: GitCacheSpec<TScope>;
+		progress: GitCacheUpdateProgress<TScope>;
+		cacheDir?: string;
+	},
+): GitCacheUpdateProgressDisplay {
+	const display = buildGitCacheUpdateProgressDisplay(input);
+	context.metadata({
+		title: display.title,
+		metadata: display.metadata,
+	});
+	return display;
+}
+
+export async function updateGitCache<TScope extends string>(input: {
+	runtime: Pick<
+		GitCachePluginContext<TScope>,
+		| "cacheDir"
+		| "stateFile"
+		| "indexFile"
+		| "maxAgeSeconds"
+		| "readState"
+		| "loadIndex"
+		| "refreshIndex"
+		| "formatIndexCounts"
+		| "syncSources"
+		| "isSourceReady"
+	>;
+	spec: GitCacheSpec<TScope>;
+	force?: boolean;
+	readySourceId?: string;
+	options?: GitCacheUpdateProgressOptions<TScope>;
+}): Promise<GitCacheUpdateResult<TScope>> {
+	const sectionScopes = getGitCacheScopes(input.spec);
+	const sources = input.spec.sources.length;
+	const sections = sectionScopes.length;
+	const readySourceId =
+		input.readySourceId ?? getGitCacheLookups(input.spec).readySourceId;
+
+	await input.options?.onProgress?.({ phase: "start", sources, sections });
+
+	const state = await input.runtime.readState();
+	const freshness = getGitCacheFreshness(
+		state.updatedAt,
+		input.runtime.maxAgeSeconds,
+	);
+
+	if (
+		!input.force &&
+		(await input.runtime.isSourceReady(readySourceId)) &&
+		freshness.fresh
+	) {
+		const index =
+			(await input.runtime.loadIndex()) ?? (await input.runtime.refreshIndex());
+		await input.options?.onProgress?.({
+			phase: "fresh",
+			sources,
+			sections,
+		});
+		return {
+			lines: [
+				`Cache is fresh (${freshness.hoursAgo}h old).`,
+				`Cache directory: ${input.runtime.cacheDir}`,
+				`State file: ${input.runtime.stateFile}`,
+				...input.runtime.formatIndexCounts(index),
+				"Use force=true to refresh anyway.",
+			],
+			index,
+			fresh: true,
+			freshnessHoursAgo: freshness.hoursAgo,
+		};
+	}
+
+	const lines = await input.runtime.syncSources({
+		onProgress: async (progress) => {
+			await input.options?.onProgress?.({
+				phase: "sync",
+				progress,
+				sources,
+				sections,
+			});
+		},
+	});
+
+	const index = await input.runtime.refreshIndex({
+		onProgress: async (progress) => {
+			await input.options?.onProgress?.({
+				phase: "index",
+				progress,
+				sources,
+				sections,
+			});
+		},
+	});
+
+	lines.push("");
+	lines.push(`State file: ${input.runtime.stateFile}`);
+	lines.push(`Search index: ${input.runtime.indexFile}`);
+	lines.push(...input.runtime.formatIndexCounts(index));
+
+	await input.options?.onProgress?.({ phase: "complete", sources, sections });
+
+	return {
+		lines,
+		index,
+		fresh: false,
+		freshnessHoursAgo: freshness.timestamp == null ? null : freshness.hoursAgo,
+	};
+}
+
+function buildIndexProgressMessage<TScope extends string>(
+	spec: GitCacheSpec<TScope>,
+	progress: GitCacheIndexProgress<TScope>,
+): string {
+	const label = spec.sections[progress.scope].label;
+	if (progress.phase === "start") {
+		return `Indexing section ${progress.index}/${progress.total}: ${label}`;
+	}
+
+	return [
+		`Indexed section ${progress.index}/${progress.total}: ${label}`,
+		`Files: ${progress.fileCount}`,
+	].join("\n");
+}
+
 export function createGitCachePlugin<TScope extends string>(
 	input: GitCachePluginOptions<TScope>,
 ): Plugin {
@@ -660,7 +1100,8 @@ export function createGitCachePlugin<TScope extends string>(
 			sendNotification,
 			maxAgeSeconds: input.maxAgeSeconds ?? DEFAULT_GIT_CACHE_MAX_AGE_SECONDS,
 		});
-		const scopeValues = [ALL_SCOPE, ...getGitCacheScopes(spec)] as const;
+		const sectionScopes = getGitCacheScopes(spec);
+		const scopeValues = [ALL_SCOPE, ...sectionScopes] as const;
 
 		const tools: Hooks["tool"] = {
 			[spec.updateTool.name]: tool({
@@ -675,37 +1116,26 @@ export function createGitCachePlugin<TScope extends string>(
 					try {
 						await mkdir(runtime.cacheDir, { recursive: true });
 
-						const state = await runtime.readState();
-						const freshness = getGitCacheFreshness(
-							state.updatedAt,
-							runtime.maxAgeSeconds,
-						);
-						const readySourceId = lookups.readySourceId;
+						const result = await updateGitCache({
+							runtime,
+							spec,
+							force: args.force,
+							readySourceId: lookups.readySourceId,
+							options: {
+								onProgress: async (progress) => {
+									const display = publishGitCacheUpdateProgress(context, {
+										spec,
+										progress,
+										cacheDir: runtime.cacheDir,
+									});
+									if (display.message != null) {
+										await runtime.notify(context.sessionID, display.message);
+									}
+								},
+							},
+						});
 
-						if (
-							!args.force &&
-							(await runtime.isSourceReady(readySourceId)) &&
-							freshness.fresh
-						) {
-							const index =
-								(await runtime.loadIndex()) ?? (await runtime.refreshIndex());
-							const message = [
-								`Cache is fresh (${freshness.hoursAgo}h old).`,
-								`Cache directory: ${runtime.cacheDir}`,
-								`State file: ${runtime.stateFile}`,
-								...runtime.formatIndexCounts(index),
-								"Use force=true to refresh anyway.",
-							].join("\n");
-							await runtime.notify(context.sessionID, message);
-							return message;
-						}
-
-						const lines = await runtime.syncSources();
-						const index = await runtime.refreshIndex();
-						lines.push(`\nState file: ${runtime.stateFile}`);
-						lines.push(`Search index: ${runtime.indexFile}`);
-						lines.push(...runtime.formatIndexCounts(index));
-						const output = lines.join("\n");
+						const output = result.lines.join("\n");
 						await runtime.notify(context.sessionID, output);
 						await runtime.log(spec.updateTool.successLogMessage);
 						return output;
